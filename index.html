@@ -105,7 +105,32 @@
                         <span>Ekstrak</span>
                     </button>
                 </div>
-                <p class="text-xs text-gray-400 mt-3 text-center"><i class="fa-solid fa-circle-info mr-1"></i> Gunakan link produk format panjang (bukan shp.ee)</p>
+                
+                <!-- Manual Mode Toggle -->
+                <div class="mt-4 flex flex-col items-center">
+                    <button onclick="toggleManualMode()" class="text-sm text-shopee hover:underline focus:outline-none flex items-center gap-1 transition">
+                        <i class="fa-solid fa-screwdriver-wrench"></i> Akses Diblokir Shopee? Gunakan Mode Manual
+                    </button>
+                </div>
+
+                <!-- Manual Mode Section -->
+                <div id="manualModeSection" class="hidden mt-4 bg-red-50 border border-red-200 rounded-lg p-5 text-sm text-gray-800 fade-in material-shadow">
+                    <p class="font-bold mb-3 text-red-600 text-base"><i class="fa-solid fa-shield-halved mr-1"></i> Bypass Sistem Keamanan Shopee</p>
+                    <p class="mb-3 text-gray-600">Shopee terkadang memblokir akses otomatis dari proxy. Jika <i>loading</i> selalu gagal, lakukan langkah ini:</p>
+                    <ol class="list-decimal list-inside space-y-2 mb-4 font-medium">
+                        <li>Klik link API berikut (akan terbuka di tab baru):<br>
+                            <a id="manualApiLink" href="#" target="_blank" class="text-blue-600 hover:text-blue-800 hover:underline break-all ml-5 block mt-2 bg-white p-3 border border-gray-200 rounded shadow-sm">Link API akan muncul setelah Anda klik tombol Ekstrak di atas.</a>
+                        </li>
+                        <li>Tekan <kbd class="bg-gray-100 border border-gray-300 px-1 rounded">Ctrl+A</kbd> lalu <kbd class="bg-gray-100 border border-gray-300 px-1 rounded">Ctrl+C</kbd> untuk menyalin <b>seluruh teks</b> di halaman baru tersebut.</li>
+                        <li>Paste / Tempel (<kbd class="bg-gray-100 border border-gray-300 px-1 rounded">Ctrl+V</kbd>) teks tersebut ke kotak di bawah ini:</li>
+                    </ol>
+                    <textarea id="manualJsonInput" rows="4" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-shopee focus:border-shopee font-mono text-xs mb-3 shadow-sm transition" placeholder='Paste data JSON di sini (Contoh: {"data": {"itemid": ...}} )'></textarea>
+                    <button onclick="handleManualExtract()" class="bg-gray-800 hover:bg-black text-white font-medium px-5 py-2.5 rounded-lg shadow transition w-full md:w-auto flex justify-center items-center gap-2">
+                        <i class="fa-solid fa-file-import"></i> Ekstrak Data Manual
+                    </button>
+                </div>
+
+                <p class="text-xs text-gray-400 mt-4 text-center"><i class="fa-solid fa-circle-info mr-1"></i> Gunakan link produk format panjang (bukan shp.ee)</p>
             </div>
         </section>
 
@@ -181,6 +206,50 @@
         const imageSection = document.getElementById('imageSection');
         const imageGrid = document.getElementById('imageGrid');
 
+        // Manual Mode Elements
+        const manualModeSection = document.getElementById('manualModeSection');
+        const manualApiLink = document.getElementById('manualApiLink');
+        const manualJsonInput = document.getElementById('manualJsonInput');
+
+        let currentApiUrl = "";
+
+        function toggleManualMode() {
+            manualModeSection.classList.toggle('hidden');
+            if(currentApiUrl) {
+                manualApiLink.href = currentApiUrl;
+                manualApiLink.innerText = currentApiUrl;
+            }
+        }
+
+        function handleManualExtract() {
+            const rawText = manualJsonInput.value.trim();
+            if (!rawText) {
+                showError("Input Kosong", "Silakan paste data JSON dari link API yang telah disediakan.");
+                return;
+            }
+            try {
+                const data = JSON.parse(rawText);
+                if (data.error) {
+                    showError("Shopee Error", data.error_msg || "Produk tidak ditemukan atau akses ditolak oleh Shopee.");
+                    return;
+                }
+                if (!data.data) {
+                    showError("Format Salah", "Data yang Anda paste tidak memiliki properti data yang benar. Pastikan Anda menyalin (copy) SELURUH teks yang ada di halaman API.");
+                    return;
+                }
+                
+                // Jika Berhasil:
+                hideError();
+                manualJsonInput.value = ''; // Bersihkan form
+                resultsSection.classList.add('hidden');
+                
+                // Gunakan fungsi render yang sama
+                renderResults(data.data);
+            } catch (e) {
+                showError("Format Tidak Valid", "Teks yang dipaste bukan format JSON yang benar. Pastikan Anda tidak salah copy.");
+            }
+        }
+
         // Allow pressing Enter to search
         urlInput.addEventListener('keypress', function (e) {
             if (e.key === 'Enter') handleExtract();
@@ -231,6 +300,13 @@
                 return;
             }
 
+            // Set & Update Link API untuk Mode Manual
+            currentApiUrl = `https://shopee.co.id/api/v4/item/get?itemid=${ids.itemId}&shopid=${ids.shopId}`;
+            if (manualApiLink) {
+                manualApiLink.href = currentApiUrl;
+                manualApiLink.innerText = currentApiUrl;
+            }
+
             // Reset UI
             hideError();
             resultsSection.classList.add('hidden');
@@ -240,14 +316,14 @@
 
             try {
                 // Endpoint Shopee API (Public/Mobile)
-                const apiUrl = `https://shopee.co.id/api/v4/item/get?itemid=${ids.itemId}&shopid=${ids.shopId}`;
+                const apiUrl = currentApiUrl;
                 
-                // Daftar proxy yang lebih bervariasi dengan tipe penanganan yang berbeda
+                // Daftar proxy diperbarui, memprioritaskan proxy raw karena lebih stabil
                 const proxies = [
-                    { url: `https://api.allorigins.win/get?url=${encodeURIComponent(apiUrl)}`, type: 'wrapper' },
+                    { url: `https://corsproxy.io/?${encodeURIComponent(apiUrl)}`, type: 'raw' },
                     { url: `https://api.allorigins.win/raw?url=${encodeURIComponent(apiUrl)}`, type: 'raw' },
                     { url: `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(apiUrl)}`, type: 'raw' },
-                    { url: `https://corsproxy.io/?${encodeURIComponent(apiUrl)}`, type: 'raw' }
+                    { url: `https://api.allorigins.win/get?url=${encodeURIComponent(apiUrl)}`, type: 'wrapper' }
                 ];
 
                 let shopeeData = null;
@@ -296,7 +372,9 @@
                 }
 
                 if (!shopeeData) {
-                    throw new Error("Gagal terhubung. Semua layanan proxy sedang sibuk atau akses diblokir oleh sistem keamanan Shopee. Silakan coba lagi dalam beberapa saat.");
+                    // Tampilkan kotak mode manual otomatis jika proxy diblokir Shopee
+                    manualModeSection.classList.remove('hidden');
+                    throw new Error("Gagal mengekstrak secara otomatis. Shopee memblokir akses proxy. Silakan gunakan 'Mode Manual' yang muncul di atas.");
                 }
 
                 // Handling respon error dari Shopee (misal produk dihapus, diblokir karena bot, dll)

@@ -116,12 +116,19 @@
                 <!-- Manual Mode Section -->
                 <div id="manualModeSection" class="hidden mt-4 bg-red-50 border border-red-200 rounded-lg p-5 text-sm text-gray-800 fade-in material-shadow">
                     <p class="font-bold mb-3 text-red-600 text-base"><i class="fa-solid fa-shield-halved mr-1"></i> Bypass Sistem Keamanan Shopee</p>
-                    <p class="mb-3 text-gray-600">Shopee terkadang memblokir akses otomatis dari proxy. Jika <i>loading</i> selalu gagal, lakukan langkah ini:</p>
+                    
+                    <div class="bg-yellow-100 border-l-4 border-yellow-500 p-3 mb-4 text-yellow-800 rounded">
+                        <p class="font-bold text-sm"><i class="fa-solid fa-circle-exclamation mr-1"></i> Penting: Wajib Login Shopee</p>
+                        <p class="text-xs mt-1">Karena pembaruan keamanan, pastikan Anda <b>sudah login ke akun Shopee</b> di browser ini sebelum melakukan langkah di bawah.</p>
+                    </div>
+
+                    <p class="mb-3 text-gray-600">Jika ekstrak otomatis gagal (diminta login / diblokir), lakukan langkah ini:</p>
                     <ol class="list-decimal list-inside space-y-2 mb-4 font-medium">
+                        <li>Buka tab baru dan <b>Login ke shopee.co.id</b> (jika Anda belum login).</li>
                         <li>Klik link API berikut (akan terbuka di tab baru):<br>
                             <a id="manualApiLink" href="#" target="_blank" class="text-blue-600 hover:text-blue-800 hover:underline break-all ml-5 block mt-2 bg-white p-3 border border-gray-200 rounded shadow-sm">Link API akan muncul setelah Anda klik tombol Ekstrak di atas.</a>
                         </li>
-                        <li>Tekan <kbd class="bg-gray-100 border border-gray-300 px-1 rounded">Ctrl+A</kbd> lalu <kbd class="bg-gray-100 border border-gray-300 px-1 rounded">Ctrl+C</kbd> untuk menyalin <b>seluruh teks</b> di halaman baru tersebut.</li>
+                        <li>Tekan <kbd class="bg-gray-100 border border-gray-300 px-1 rounded">Ctrl+A</kbd> lalu <kbd class="bg-gray-100 border border-gray-300 px-1 rounded">Ctrl+C</kbd> untuk menyalin <b>seluruh teks</b> di halaman API tersebut.</li>
                         <li>Paste / Tempel (<kbd class="bg-gray-100 border border-gray-300 px-1 rounded">Ctrl+V</kbd>) teks tersebut ke kotak di bawah ini:</li>
                     </ol>
                     <textarea id="manualJsonInput" rows="4" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-shopee focus:border-shopee font-mono text-xs mb-3 shadow-sm transition" placeholder='Paste data JSON di sini (Contoh: {"data": {"itemid": ...}} )'></textarea>
@@ -229,6 +236,13 @@
             }
             try {
                 const data = JSON.parse(rawText);
+                
+                // Deteksi spesifik jika belum login
+                if (data.error === 9030999 || (data.error_msg && data.error_msg.toLowerCase().includes("login"))) {
+                    showError("Wajib Login", "Shopee memblokir akses karena Anda belum login. Buka shopee.co.id di tab baru, login ke akun Anda, lalu klik link API dan ulangi proses ini.");
+                    return;
+                }
+
                 if (data.error) {
                     showError("Shopee Error", data.error_msg || "Produk tidak ditemukan atau akses ditolak oleh Shopee.");
                     return;
@@ -379,6 +393,11 @@
 
                 // Handling respon error dari Shopee (misal produk dihapus, diblokir karena bot, dll)
                 if (shopeeData.error) {
+                    // Deteksi jika Shopee meminta login
+                    if (shopeeData.error === 9030999 || (shopeeData.error_msg && shopeeData.error_msg.toLowerCase().includes("login"))) {
+                        manualModeSection.classList.remove('hidden');
+                        throw new Error("Shopee meminta otentikasi (Login). Silakan gunakan Mode Manual di atas setelah memastikan Anda login ke shopee.co.id di tab baru.");
+                    }
                     throw new Error(`Shopee Error: ${shopeeData.error_msg || 'Produk tidak ditemukan atau akses diblokir sementara.'}`);
                 }
                 

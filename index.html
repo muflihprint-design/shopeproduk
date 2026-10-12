@@ -2,449 +2,489 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Analisis Warna PDF</title>
-    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shopee Media Downloader</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
+    <!-- Custom Config untuk Warna Shopee -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        shopee: {
+                            DEFAULT: '#ee4d2d',
+                            light: '#f57c61',
+                            dark: '#d03e1e',
+                            bg: '#f5f5f5'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Roboto', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
     <style>
-        /* Custom Scrollbar untuk desktop dan mobile */
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 6px;
-            height: 6px; /* Tinggi scrollbar untuk horizontal scroll */
+        body {
+            background-color: #f5f5f5;
         }
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: #f1f5f9; 
-            border-radius: 8px;
+        .material-shadow {
+            box-shadow: 0 2px 1px -1px rgba(0,0,0,.2), 0 1px 1px 0 rgba(0,0,0,.14), 0 1px 3px 0 rgba(0,0,0,.12);
         }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #cbd5e1; 
-            border-radius: 8px;
+        .material-shadow-hover:hover {
+            box-shadow: 0 3px 3px -2px rgba(0,0,0,.2), 0 3px 4px 0 rgba(0,0,0,.14), 0 1px 8px 0 rgba(0,0,0,.12);
         }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8; 
+        /* Spinner Animasi */
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 4px solid #ee4d2d;
+            width: 40px;
+            height: 40px;
+            -webkit-animation: spin 1s linear infinite; /* Safari */
+            animation: spin 1s linear infinite;
         }
-        .drag-active {
-            border-color: #3b82f6 !important;
-            background-color: #eff6ff !important;
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        /* Transisi halus */
+        .fade-in {
+            animation: fadeIn 0.4s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen flex flex-col">
-    
-    <div class="flex-grow w-full max-w-5xl mx-auto px-4 py-6 sm:px-6 md:py-10">
+<body class="text-gray-800 antialiased min-h-screen flex flex-col">
+
+    <!-- Navbar -->
+    <nav class="bg-white material-shadow sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-shopee text-white rounded-full flex items-center justify-center text-xl shadow-md">
+                    <i class="fa-solid fa-bag-shopping"></i>
+                </div>
+                <h1 class="text-xl font-bold text-shopee">Shopee Extract</h1>
+            </div>
+            <a href="#" class="text-gray-500 hover:text-shopee transition"><i class="fa-brands fa-github text-2xl"></i></a>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="flex-grow max-w-6xl mx-auto px-4 py-8 w-full">
         
-        <header class="text-center mb-8 md:mb-10">
-            <div class="inline-flex items-center justify-center w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-200 mb-4 md:mb-5 transition-transform hover:scale-105 duration-200">
-                <i class="fa-solid fa-chart-pie text-2xl md:text-3xl"></i>
-            </div>
-            <h1 class="text-2xl md:text-4xl font-extrabold text-slate-800 mb-3 tracking-tight">Analisis Warna PDF</h1>
-            <p class="text-sm md:text-base text-slate-500 max-w-2xl mx-auto leading-relaxed">
-                Kalkulasi dan kategorikan halaman PDF Anda berdasarkan penggunaan warna (Hitam Putih, Berwarna &le; 50%, dan Berwarna &gt; 50%). Seluruh proses dilakukan di perangkat Anda.
-            </p>
-        </header>
-
-        <div id="error-container" class="hidden bg-red-50 border border-red-200 p-4 mb-6 rounded-xl shadow-sm mx-auto max-w-3xl">
-            <div class="flex items-center">
-                <i class="fa-solid fa-triangle-exclamation text-red-500 mr-3 text-lg"></i>
-                <p id="error-message" class="text-sm md:text-base text-red-700 font-medium"></p>
-            </div>
-        </div>
-
-        <div id="upload-section" class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 md:p-8 mx-auto max-w-3xl">
-            <div id="drop-zone" class="border-2 border-dashed border-slate-300 rounded-xl p-6 md:p-10 text-center transition-all duration-200 hover:bg-slate-50 hover:border-blue-300 cursor-pointer group">
-                <input type="file" id="file-input" class="hidden" accept=".pdf" multiple />
-                <i class="fa-solid fa-cloud-arrow-up text-4xl md:text-5xl text-slate-300 group-hover:text-blue-500 mb-4 transition-colors"></i>
-                <h3 class="text-base md:text-lg font-semibold text-slate-700 mb-2">Pilih atau Tarik File PDF ke sini</h3>
-                <p class="text-xs md:text-sm text-slate-500 mb-6">Mendukung format .pdf (Bisa pilih lebih dari satu file)</p>
-                <button id="browse-btn" class="w-full sm:w-auto px-6 py-3 sm:py-2.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-medium rounded-lg shadow-sm transition-colors duration-200">
-                    Cari File PDF
-                </button>
-            </div>
-        </div>
-
-        <div id="progress-section" class="hidden bg-white rounded-2xl shadow-sm border border-slate-100 p-6 md:p-8 mx-auto max-w-3xl text-center">
-            <h3 class="text-lg font-semibold text-slate-700 mb-6">Menganalisis File...</h3>
-            
-            <div class="mb-5 text-left">
-                <div class="flex justify-between text-xs md:text-sm text-slate-500 mb-2 font-medium">
-                    <span id="overall-progress-text" class="truncate pr-4">File 0 dari 0</span>
-                </div>
-                <div class="w-full bg-slate-100 rounded-full h-2 md:h-2.5 overflow-hidden">
-                    <div id="overall-progress-bar" class="bg-indigo-500 h-full rounded-full transition-all duration-300" style="width: 0%"></div>
-                </div>
+        <!-- Hero & Input Section -->
+        <section class="bg-white rounded-xl material-shadow p-6 mb-8 fade-in">
+            <div class="text-center mb-6">
+                <h2 class="text-2xl md:text-3xl font-bold mb-2">Download Media Produk Shopee</h2>
+                <p class="text-gray-500 text-sm md:text-base">Masukkan link produk Shopee untuk mengekstrak dan mengunduh gambar serta video berkualitas tinggi secara otomatis.</p>
             </div>
 
-            <div class="text-left">
-                <div class="flex justify-between text-xs md:text-sm text-slate-500 mb-2 font-medium">
-                    <span id="progress-text">Halaman 0 dari 0</span>
-                    <span id="progress-percentage">0%</span>
-                </div>
-                <div class="w-full bg-slate-100 rounded-full h-3 md:h-4 overflow-hidden relative">
-                    <div id="progress-bar" class="bg-blue-600 h-full rounded-full transition-all duration-300" style="width: 0%"></div>
-                </div>
-            </div>
-            
-            <p class="text-xs text-slate-400 mt-6 bg-slate-50 p-3 rounded-lg inline-block">
-                <i class="fa-solid fa-circle-info mr-1"></i> Mohon tunggu, proses ini mungkin memakan waktu tergantung jumlah dan ukuran file. Layar mungkin terlihat sibuk sesaat.
-            </p>
-        </div>
-
-        <div id="results-section" class="hidden space-y-6">
-            
-            <!-- Summary Cards (Responsive Grid) -->
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <!-- BW Card -->
-                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 flex items-center transition-all hover:shadow-md">
-                    <div class="w-12 h-12 md:w-14 md:h-14 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 mr-4 shrink-0">
-                        <i class="fa-solid fa-file-lines text-xl md:text-2xl"></i>
+            <div class="max-w-3xl mx-auto">
+                <div class="flex flex-col md:flex-row gap-3">
+                    <div class="relative flex-grow">
+                        <div class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-gray-400">
+                            <i class="fa-solid fa-link"></i>
+                        </div>
+                        <input type="text" id="urlInput" 
+                            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-shopee focus:border-shopee block w-full pl-10 p-3.5 transition shadow-sm" 
+                            placeholder="Contoh: https://shopee.co.id/Nama-Produk-i.123456.7890123" required>
                     </div>
-                    <div>
-                        <p class="text-xs md:text-sm text-slate-500 font-medium">Total Hitam Putih</p>
-                        <h4 id="count-bw" class="text-2xl md:text-3xl font-bold text-slate-700">0</h4>
-                    </div>
-                </div>
-                
-                <!-- Light Color Card -->
-                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 flex items-center transition-all hover:shadow-md">
-                    <div class="w-12 h-12 md:w-14 md:h-14 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 mr-4 shrink-0">
-                        <i class="fa-solid fa-file-image text-xl md:text-2xl"></i>
-                    </div>
-                    <div>
-                        <p class="text-xs md:text-sm text-slate-500 font-medium">Warna &le; 50%</p>
-                        <h4 id="count-light" class="text-2xl md:text-3xl font-bold text-slate-700">0</h4>
-                    </div>
-                </div>
-                
-                <!-- Heavy Color Card -->
-                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 flex items-center transition-all hover:shadow-md">
-                    <div class="w-12 h-12 md:w-14 md:h-14 rounded-full bg-purple-50 flex items-center justify-center text-purple-600 mr-4 shrink-0">
-                        <i class="fa-solid fa-palette text-xl md:text-2xl"></i>
-                    </div>
-                    <div>
-                        <p class="text-xs md:text-sm text-slate-500 font-medium">Warna &gt; 50%</p>
-                        <h4 id="count-heavy" class="text-2xl md:text-3xl font-bold text-slate-700">0</h4>
-                    </div>
-                </div>
-            </div>
-
-            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex flex-col">
-                <div class="px-5 py-4 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-50">
-                    <h3 class="font-semibold text-slate-700">Rincian Per File</h3>
-                    <button id="reset-btn" class="w-full sm:w-auto px-5 py-2.5 text-sm bg-white border border-slate-300 hover:bg-slate-50 active:bg-slate-100 text-slate-700 font-medium rounded-lg shadow-sm transition-colors duration-200 flex items-center justify-center">
-                        <i class="fa-solid fa-rotate-right mr-2"></i>Analisis File Baru
+                    <button id="extractBtn" onclick="handleExtract()" 
+                        class="bg-shopee hover:bg-shopee-dark text-white font-medium rounded-lg text-sm px-6 py-3.5 focus:ring-4 focus:outline-none focus:ring-red-300 transition material-shadow flex items-center justify-center gap-2 whitespace-nowrap min-w-[140px]">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <span>Ekstrak</span>
                     </button>
                 </div>
-                
-                <!-- Table Wrapper for Horizontal Scroll on Mobile -->
-                <div class="w-full overflow-x-auto custom-scrollbar">
-                    <table class="w-full text-left text-sm text-slate-600 min-w-[650px]">
-                        <thead class="text-xs text-slate-500 uppercase bg-slate-50/80 sticky top-0">
-                            <tr>
-                                <th scope="col" class="px-5 py-4 font-semibold">Nama File</th>
-                                <th scope="col" class="px-5 py-4 text-center font-semibold">Total Halaman</th>
-                                <th scope="col" class="px-5 py-4 text-center font-semibold">Hitam Putih</th>
-                                <th scope="col" class="px-5 py-4 text-center font-semibold">Warna &le; 50%</th>
-                                <th scope="col" class="px-5 py-4 text-center font-semibold">Warna &gt; 50%</th>
-                            </tr>
-                        </thead>
-                        <tbody id="details-table-body" class="divide-y divide-slate-100">
-                            <!-- Rows will be populated by JS -->
-                        </tbody>
-                    </table>
+                <p class="text-xs text-gray-400 mt-3 text-center"><i class="fa-solid fa-circle-info mr-1"></i> Gunakan link produk format panjang (bukan shp.ee)</p>
+            </div>
+        </section>
+
+        <!-- Loading State -->
+        <div id="loadingState" class="hidden flex-col items-center justify-center py-12">
+            <div class="loader mb-4"></div>
+            <p class="text-gray-600 font-medium">Sedang mengambil data dari Shopee...</p>
+        </div>
+
+        <!-- Error Message -->
+        <div id="errorMessage" class="hidden max-w-3xl mx-auto bg-red-50 border-l-4 border-red-500 p-4 mb-8 rounded-r-lg shadow-sm fade-in">
+            <div class="flex items-start">
+                <div class="flex-shrink-0 text-red-500 mt-0.5">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                </div>
+                <div class="ml-3">
+                    <h3 class="text-red-800 font-medium" id="errorTitle">Gagal Mengekstrak</h3>
+                    <p class="text-red-600 text-sm mt-1" id="errorDesc">URL tidak valid atau produk tidak ditemukan.</p>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Hidden canvas for rendering PDF pages for analysis -->
-    <canvas id="pdf-canvas" class="hidden"></canvas>
+        <!-- Results Section -->
+        <section id="resultsSection" class="hidden fade-in">
+            <!-- Product Info -->
+            <div id="productInfo" class="bg-white rounded-xl material-shadow p-4 mb-6 flex items-center gap-4">
+                <!-- Diisi via JS -->
+            </div>
 
-    <!-- Load PDF.js Library -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+            <!-- Video Section -->
+            <div id="videoSection" class="mb-8 hidden">
+                <h3 class="text-lg font-bold border-b-2 border-shopee inline-block pb-1 mb-4 text-gray-800"><i class="fa-solid fa-video text-shopee mr-2"></i>Video Produk</h3>
+                <div id="videoGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                    <!-- Diisi via JS -->
+                </div>
+            </div>
+
+            <!-- Images Section -->
+            <div id="imageSection" class="mb-8 hidden">
+                <div class="flex justify-between items-center mb-4 border-b-2 border-shopee pb-1">
+                    <h3 class="text-lg font-bold text-gray-800"><i class="fa-regular fa-image text-shopee mr-2"></i>Gambar Produk</h3>
+                </div>
+                <div id="imageGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                    <!-- Diisi via JS -->
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-gray-200 mt-auto">
+        <div class="max-w-6xl mx-auto px-4 py-6 text-center">
+            <p class="text-gray-500 text-sm">© 2026 Shopee Media Extractor. Alat independen, tidak berafiliasi dengan Shopee.</p>
+        </div>
+    </footer>
 
     <script>
-        // Setup PDF.js worker
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-
-        // DOM Elements
-        const dropZone = document.getElementById('drop-zone');
-        const fileInput = document.getElementById('file-input');
-        const browseBtn = document.getElementById('browse-btn');
-        const uploadSection = document.getElementById('upload-section');
-        const progressSection = document.getElementById('progress-section');
-        const resultsSection = document.getElementById('results-section');
-        const errorContainer = document.getElementById('error-container');
-        const errorMessage = document.getElementById('error-message');
+        // Constants & Utilities
+        const SHOPEE_IMAGE_BASE = "https://cf.shopee.co.id/file/";
         
-        const overallProgressBar = document.getElementById('overall-progress-bar');
-        const overallProgressText = document.getElementById('overall-progress-text');
+        // Element References
+        const urlInput = document.getElementById('urlInput');
+        const extractBtn = document.getElementById('extractBtn');
+        const loadingState = document.getElementById('loadingState');
+        const errorMessage = document.getElementById('errorMessage');
+        const errorTitle = document.getElementById('errorTitle');
+        const errorDesc = document.getElementById('errorDesc');
+        const resultsSection = document.getElementById('resultsSection');
+        const productInfo = document.getElementById('productInfo');
         
-        const progressBar = document.getElementById('progress-bar');
-        const progressText = document.getElementById('progress-text');
-        const progressPercentage = document.getElementById('progress-percentage');
-        
-        const countBwEl = document.getElementById('count-bw');
-        const countLightEl = document.getElementById('count-light');
-        const countHeavyEl = document.getElementById('count-heavy');
-        const detailsTableBody = document.getElementById('details-table-body');
-        const resetBtn = document.getElementById('reset-btn');
+        const videoSection = document.getElementById('videoSection');
+        const videoGrid = document.getElementById('videoGrid');
+        const imageSection = document.getElementById('imageSection');
+        const imageGrid = document.getElementById('imageGrid');
 
-        const canvas = document.getElementById('pdf-canvas');
-        const ctx = canvas.getContext('2d', { willReadFrequently: true });
-
-        // Configuration
-        const RENDER_SCALE = 0.3; 
-        const COLOR_THRESHOLD = 15;
-        const NOISE_TOLERANCE = 0.1;
-
-        browseBtn.addEventListener('click', () => fileInput.click());
-        dropZone.addEventListener('click', (e) => {
-            // Prevent triggering twice if button is clicked
-            if(e.target === dropZone || e.target.tagName === 'H3' || e.target.tagName === 'P' || e.target.tagName === 'I') {
-                fileInput.click();
-            }
+        // Allow pressing Enter to search
+        urlInput.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') handleExtract();
         });
 
-        dropZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dropZone.classList.add('drag-active');
-        });
+        /**
+         * Mengekstrak Shop ID dan Item ID dari URL Shopee.
+         * Mendukung format:
+         * 1. shopee.co.id/product/123/456
+         * 2. shopee.co.id/Nama-Produk-Panjang-i.123.456
+         */
+        function extractIds(url) {
+            try {
+                // Hapus query parameters jika ada
+                const cleanUrl = url.split('?')[0];
+                
+                // Format 1: -i.shopId.itemId
+                const regexFormat1 = /-i\.(\d+)\.(\d+)/;
+                const match1 = cleanUrl.match(regexFormat1);
+                if (match1 && match1.length === 3) {
+                    return { shopId: match1[1], itemId: match1[2] };
+                }
 
-        dropZone.addEventListener('dragleave', () => {
-            dropZone.classList.remove('drag-active');
-        });
+                // Format 2: product/shopId/itemId
+                const regexFormat2 = /product\/(\d+)\/(\d+)/;
+                const match2 = cleanUrl.match(regexFormat2);
+                if (match2 && match2.length === 3) {
+                    return { shopId: match2[1], itemId: match2[2] };
+                }
 
-        dropZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dropZone.classList.remove('drag-active');
-            
-            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                processMultipleFiles(e.dataTransfer.files);
-            }
-        });
-
-        fileInput.addEventListener('change', (e) => {
-            if (e.target.files && e.target.files.length > 0) {
-                processMultipleFiles(e.target.files);
-            }
-        });
-
-        resetBtn.addEventListener('click', resetUI);
-
-        function showError(msg) {
-            if (errorMessage) errorMessage.textContent = msg;
-            if (errorContainer) {
-                errorContainer.classList.remove('hidden');
-                window.scrollTo(0, 0);
+                return null;
+            } catch (e) {
+                return null;
             }
         }
 
-        function hideError() {
-            if (errorContainer) {
-                errorContainer.classList.add('hidden');
-            }
-        }
-
-        function resetUI() {
-            uploadSection.classList.remove('hidden');
-            progressSection.classList.add('hidden');
-            resultsSection.classList.add('hidden');
-            hideError();
-            fileInput.value = '';
-            detailsTableBody.innerHTML = '';
-            if(countBwEl) countBwEl.textContent = '0';
-            if(countLightEl) countLightEl.textContent = '0';
-            if(countHeavyEl) countHeavyEl.textContent = '0';
-        }
-
-        async function processMultipleFiles(files) {
-            hideError();
+        async function handleExtract() {
+            const url = urlInput.value.trim();
             
-            const validFiles = Array.from(files).filter(file => file.type === 'application/pdf');
-            
-            if (validFiles.length === 0) {
-                showError('Tidak ada file PDF yang valid. Harap unggah file dengan format .pdf');
+            if (!url) {
+                showError("Input Kosong", "Silakan masukkan link produk terlebih dahulu.");
                 return;
             }
 
-            uploadSection.classList.add('hidden');
-            progressSection.classList.remove('hidden');
-            
-            let overallStats = {
-                bw: 0,
-                light: 0,
-                heavy: 0,
-                totalFiles: validFiles.length
-            };
-            
-            let fileDetails = [];
+            const ids = extractIds(url);
+            if (!ids) {
+                showError("Link Tidak Valid", "Pastikan URL adalah link produk Shopee yang benar. Link pendek (shp.ee) tidak didukung saat ini.");
+                return;
+            }
 
-            // Reset Overall Progress
-            overallProgressBar.style.width = '0%';
-            overallProgressText.textContent = `Memproses File 1 dari ${validFiles.length}`;
+            // Reset UI
+            hideError();
+            resultsSection.classList.add('hidden');
+            loadingState.classList.remove('hidden');
+            extractBtn.disabled = true;
+            extractBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Menunggu...`;
 
-            for (let fIndex = 0; fIndex < validFiles.length; fIndex++) {
-                const file = validFiles[fIndex];
+            try {
+                // Endpoint Shopee API (Public/Mobile)
+                const apiUrl = `https://shopee.co.id/api/v4/item/get?itemid=${ids.itemId}&shopid=${ids.shopId}`;
                 
-                // Update Overall Progress UI
-                overallProgressText.textContent = `Memproses File ${fIndex + 1} dari ${validFiles.length}: ${file.name}`;
-                overallProgressBar.style.width = `${(fIndex / validFiles.length) * 100}%`;
-                
-                // Reset Current File Progress
-                progressBar.style.width = '0%';
-                progressText.textContent = `Memuat file...`;
-                progressPercentage.textContent = '0%';
+                // Daftar proxy yang lebih bervariasi dengan tipe penanganan yang berbeda
+                const proxies = [
+                    { url: `https://api.allorigins.win/get?url=${encodeURIComponent(apiUrl)}`, type: 'wrapper' },
+                    { url: `https://api.allorigins.win/raw?url=${encodeURIComponent(apiUrl)}`, type: 'raw' },
+                    { url: `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(apiUrl)}`, type: 'raw' },
+                    { url: `https://corsproxy.io/?${encodeURIComponent(apiUrl)}`, type: 'raw' }
+                ];
 
-                let fileStats = {
-                    name: file.name,
-                    total: 0,
-                    bw: 0,
-                    light: 0,
-                    heavy: 0,
-                    error: false
-                };
+                let shopeeData = null;
 
-                try {
-                    const arrayBuffer = await file.arrayBuffer();
-                    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-                    const totalPages = pdf.numPages;
-                    fileStats.total = totalPages;
+                // Coba setiap proxy secara berurutan sampai ada yang berhasil
+                for (const proxy of proxies) {
+                    try {
+                        const response = await fetch(proxy.url);
+                        
+                        if (response.ok) {
+                            let data = null;
+                            
+                            // Penanganan khusus untuk allorigins/get yang membungkus data ke dalam string 'contents'
+                            if (proxy.type === 'wrapper') {
+                                const wrapper = await response.json();
+                                if (wrapper && wrapper.contents) {
+                                    try {
+                                        data = JSON.parse(wrapper.contents);
+                                    } catch (parseError) {
+                                        throw new Error("Gagal mem-parsing data dari wrapper proxy.");
+                                    }
+                                }
+                            } else {
+                                // Fallback jika proxy mereturn non-JSON (misal: halaman captcha/blokir Shopee)
+                                const text = await response.text();
+                                try {
+                                    data = JSON.parse(text);
+                                } catch (parseError) {
+                                    throw new Error("Respons bukan JSON. Proxy kemungkinan diblokir oleh sistem anti-bot Shopee.");
+                                }
+                            }
 
-                    for (let i = 1; i <= totalPages; i++) {
-                        // Update UI Progress for current file
-                        const percent = Math.round((i / totalPages) * 100);
-                        progressBar.style.width = `${percent}%`;
-                        progressText.textContent = `Menganalisis halaman ${i} dari ${totalPages}`;
-                        progressPercentage.textContent = `${percent}%`;
-
-                        // Prevent UI freeze by yielding to the main thread
-                        await new Promise(resolve => setTimeout(resolve, 15));
-
-                        const pageData = await analyzePage(pdf, i);
-
-                        if (pageData.category === 'bw') {
-                            fileStats.bw++;
-                            overallStats.bw++;
-                        } else if (pageData.category === 'light') {
-                            fileStats.light++;
-                            overallStats.light++;
-                        } else {
-                            fileStats.heavy++;
-                            overallStats.heavy++;
+                            // Validasi minimal: pastikan objek memiliki 'data' atau 'error' dari struktur Shopee
+                            if (data && (data.data !== undefined || data.error !== undefined)) {
+                                shopeeData = data;
+                                break; // Proxy berhasil, keluar dari loop
+                            } else {
+                                throw new Error("Format respons tidak sesuai dengan standar API Shopee.");
+                            }
                         }
+                    } catch (e) {
+                        console.warn(`Proxy gagal (${proxy.url}):`, e.message);
+                        // Tunggu 500ms sebelum mencoba proxy berikutnya
+                        await new Promise(resolve => setTimeout(resolve, 500));
                     }
-                } catch (err) {
-                    console.error(`Error processing file ${file.name}:`, err);
-                    fileStats.error = true;
+                }
+
+                if (!shopeeData) {
+                    throw new Error("Gagal terhubung. Semua layanan proxy sedang sibuk atau akses diblokir oleh sistem keamanan Shopee. Silakan coba lagi dalam beberapa saat.");
+                }
+
+                // Handling respon error dari Shopee (misal produk dihapus, diblokir karena bot, dll)
+                if (shopeeData.error) {
+                    throw new Error(`Shopee Error: ${shopeeData.error_msg || 'Produk tidak ditemukan atau akses diblokir sementara.'}`);
                 }
                 
-                fileDetails.push(fileStats);
-                
-                // Complete overall progress bar at the end
-                overallProgressBar.style.width = `${((fIndex + 1) / validFiles.length) * 100}%`;
-            }
+                if (!shopeeData.data) {
+                    throw new Error("Data produk tidak ditemukan di respons Shopee.");
+                }
 
-            showResults(overallStats, fileDetails);
+                renderResults(shopeeData.data);
+
+            } catch (error) {
+                console.error(error);
+                showError("Gagal Mengambil Data", error.message);
+            } finally {
+                loadingState.classList.add('hidden');
+                extractBtn.disabled = false;
+                extractBtn.innerHTML = `<i class="fa-solid fa-magnifying-glass"></i><span>Ekstrak</span>`;
+            }
         }
 
-        async function analyzePage(pdf, pageNumber) {
-            const page = await pdf.getPage(pageNumber);
-            const viewport = page.getViewport({ scale: RENDER_SCALE });
+        function renderResults(item) {
+            // Bersihkan konten sebelumnya
+            videoGrid.innerHTML = '';
+            imageGrid.innerHTML = '';
             
-            canvas.width = viewport.width;
-            canvas.height = viewport.height;
+            // 1. Render Product Info
+            const mainImg = item.image ? `${SHOPEE_IMAGE_BASE}${item.image}` : 'https://placehold.co/100x100/eeeeee/999999?text=No+Image';
+            const priceStr = item.price_min ? `Rp ${(item.price_min / 100000).toLocaleString('id-ID')}` : '-';
+            
+            productInfo.innerHTML = `
+                <img src="${mainImg}" alt="Thumbnail" class="w-16 h-16 object-cover rounded-md border border-gray-200">
+                <div class="flex-grow overflow-hidden">
+                    <h3 class="font-medium text-gray-800 text-sm md:text-base truncate" title="${item.name}">${item.name}</h3>
+                    <p class="text-shopee font-bold mt-1">${priceStr}</p>
+                </div>
+            `;
 
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            // 2. Render Videos
+            let hasVideo = false;
+            if (item.video_info_list && item.video_info_list.length > 0) {
+                item.video_info_list.forEach((video, index) => {
+                    // Cari format video dengan resolusi terbaik
+                    let videoUrl = "";
+                    if (video.formats && video.formats.length > 0) {
+                        videoUrl = video.formats[video.formats.length - 1].url; // Biasanya array terakhir adalah HQ
+                    } else if (video.default_format && video.default_format.url) {
+                        videoUrl = video.default_format.url;
+                    }
 
-            const renderContext = {
-                canvasContext: ctx,
-                viewport: viewport
-            };
-
-            await page.render(renderContext).promise;
-
-            const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            const data = imgData.data;
-            const totalPixels = canvas.width * canvas.height;
-            let coloredPixels = 0;
-
-            for (let i = 0; i < data.length; i += 4) {
-                const r = data[i];
-                const g = data[i + 1];
-                const b = data[i + 2];
-                
-                const max = Math.max(r, g, b);
-                const min = Math.min(r, g, b);
-
-                if (max - min > COLOR_THRESHOLD) {
-                    coloredPixels++;
-                }
+                    if (videoUrl) {
+                        hasVideo = true;
+                        const posterUrl = video.thumb_url ? video.thumb_url : '';
+                        const title = `Video Produk ${index + 1}`;
+                        
+                        const videoCard = document.createElement('div');
+                        videoCard.className = 'bg-white rounded-xl overflow-hidden material-shadow border border-gray-100 flex flex-col transition material-shadow-hover';
+                        
+                        videoCard.innerHTML = `
+                            <div class="relative bg-black aspect-[9/16] w-full flex items-center justify-center">
+                                <video controls poster="${posterUrl}" class="w-full h-full object-contain">
+                                    <source src="${videoUrl}" type="video/mp4">
+                                    Browser tidak mendukung tag video.
+                                </video>
+                            </div>
+                            <div class="p-3 bg-gray-50 flex justify-center border-t border-gray-100">
+                                <button onclick="triggerDownload('${videoUrl}', 'Shopee_Video_${item.itemid}_${index+1}.mp4')" 
+                                    class="w-full bg-shopee hover:bg-shopee-dark text-white text-sm font-medium py-2 px-4 rounded transition flex items-center justify-center gap-2">
+                                    <i class="fa-solid fa-download"></i> Download Video
+                                </button>
+                            </div>
+                        `;
+                        videoGrid.appendChild(videoCard);
+                    }
+                });
             }
-
-            const colorPercentage = (coloredPixels / totalPixels) * 100;
-            let category = 'bw';
-
-            if (colorPercentage <= NOISE_TOLERANCE) {
-                category = 'bw';
-            } else if (colorPercentage <= 50) {
-                category = 'light';
+            
+            if (hasVideo) {
+                videoSection.classList.remove('hidden');
             } else {
-                category = 'heavy';
+                videoSection.classList.add('hidden');
             }
 
-            return { category: category };
+            // 3. Render Images
+            let hasImage = false;
+            if (item.images && item.images.length > 0) {
+                hasImage = true;
+                item.images.forEach((imgHash, index) => {
+                    const imgUrl = `${SHOPEE_IMAGE_BASE}${imgHash}`;
+                    const fileName = `Shopee_Img_${item.itemid}_${index+1}.jpg`;
+                    
+                    const imgCard = document.createElement('div');
+                    imgCard.className = 'bg-white rounded-lg overflow-hidden material-shadow border border-gray-100 flex flex-col group relative transition material-shadow-hover';
+                    
+                    imgCard.innerHTML = `
+                        <div class="relative aspect-square w-full bg-gray-100 overflow-hidden">
+                            <img src="${imgUrl}" alt="Gambar ${index+1}" class="w-full h-full object-cover transition duration-300 group-hover:scale-105">
+                        </div>
+                        <div class="p-2 border-t border-gray-100">
+                             <button onclick="triggerDownload('${imgUrl}', '${fileName}')" 
+                                class="w-full bg-gray-100 hover:bg-shopee hover:text-white text-gray-700 text-xs font-medium py-2 px-2 rounded transition flex items-center justify-center gap-1">
+                                <i class="fa-solid fa-download"></i> Simpan
+                            </button>
+                        </div>
+                    `;
+                    imageGrid.appendChild(imgCard);
+                });
+            }
+
+            if (hasImage) {
+                imageSection.classList.remove('hidden');
+            } else {
+                imageSection.classList.add('hidden');
+            }
+
+            // Tampilkan section hasil jika ada gambar/video
+            if (hasImage || hasVideo) {
+                resultsSection.classList.remove('hidden');
+                // Scroll ke hasil
+                resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } else {
+                showError("Hasil Kosong", "Tidak ditemukan gambar atau video pada produk ini.");
+            }
         }
 
-        function showResults(overallStats, fileDetails) {
-            progressSection.classList.add('hidden');
-            resultsSection.classList.remove('hidden');
+        /**
+         * Mengunduh file dengan mengabaikan perilaku browser yang membuka file media di tab baru.
+         * Menggunakan fetch dan URL.createObjectURL.
+         */
+        async function triggerDownload(url, filename) {
+            // Tampilkan feedback visual
+            const toast = document.createElement('div');
+            toast.className = 'fixed bottom-4 right-4 bg-gray-800 text-white px-4 py-2 rounded shadow-lg text-sm z-50 fade-in';
+            toast.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Mengunduh...`;
+            document.body.appendChild(toast);
 
-            // Set Summary Counts
-            if(countBwEl) countBwEl.textContent = overallStats.bw;
-            if(countLightEl) countLightEl.textContent = overallStats.light;
-            if(countHeavyEl) countHeavyEl.textContent = overallStats.heavy;
-
-            // Populate Table
-            detailsTableBody.innerHTML = '';
-            fileDetails.forEach(detail => {
-                const tr = document.createElement('tr');
-                tr.className = 'hover:bg-slate-50 transition-colors duration-150';
+            try {
+                // Coba fetch secara langsung
+                // Jika URL berada di origin berbeda dan tidak punya header CORS, ini akan gagal
+                // Namun CDN Shopee biasanya mengizinkan GET requests (meski mungkin restricted CORS header)
+                const response = await fetch(url);
+                if (!response.ok) throw new Error("Gagal mengambil file.");
                 
-                if (detail.error) {
-                    tr.innerHTML = `
-                        <td class="px-5 py-4 font-medium text-slate-700">
-                            <div class="flex items-center">
-                                <i class="fa-solid fa-file-circle-xmark text-red-400 mr-3 text-lg"></i> 
-                                <span class="truncate max-w-[150px] sm:max-w-[200px]" title="${detail.name}">${detail.name}</span>
-                            </div>
-                        </td>
-                        <td colspan="4" class="px-5 py-4 text-red-500 text-center italic">Gagal memproses file ini</td>
-                    `;
-                } else {
-                    tr.innerHTML = `
-                        <td class="px-5 py-4 font-medium text-slate-700">
-                            <div class="flex items-center">
-                                <i class="fa-regular fa-file-pdf text-red-500 mr-3 text-lg"></i> 
-                                <span class="truncate max-w-[150px] sm:max-w-[200px]" title="${detail.name}">${detail.name}</span>
-                            </div>
-                        </td>
-                        <td class="px-5 py-4 text-center font-semibold text-slate-700">${detail.total}</td>
-                        <td class="px-5 py-4 text-center">
-                            <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 text-slate-600 font-semibold text-xs border border-slate-200">${detail.bw}</span>
-                        </td>
-                        <td class="px-5 py-4 text-center">
-                            <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-blue-50 text-blue-600 font-semibold text-xs border border-blue-100">${detail.light}</span>
-                        </td>
-                        <td class="px-5 py-4 text-center">
-                            <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-purple-50 text-purple-600 font-semibold text-xs border border-purple-100">${detail.heavy}</span>
-                        </td>
-                    `;
-                }
-                detailsTableBody.appendChild(tr);
-            });
+                const blob = await response.blob();
+                const objectUrl = window.URL.createObjectURL(blob);
+                
+                const link = document.createElement('a');
+                link.href = objectUrl;
+                link.download = filename;
+                document.body.appendChild(link);
+                link.click();
+                
+                // Cleanup
+                setTimeout(() => {
+                    document.body.removeChild(link);
+                    window.URL.revokeObjectURL(objectUrl);
+                }, 100);
+                
+                toast.innerHTML = `<i class="fa-solid fa-check text-green-400 mr-2"></i> Berhasil!`;
+
+            } catch (err) {
+                console.warn("Direct download failed, falling back to new tab:", err);
+                toast.innerHTML = `<i class="fa-solid fa-info-circle text-blue-400 mr-2"></i> Membuka tab baru...`;
+                
+                // Fallback: Jika fetch gagal (karena isu CORS pada blob dsb), buka di tab baru.
+                // Pengguna harus melakukan "Save Image As" atau "Save Video As" manual.
+                window.open(url, '_blank');
+            } finally {
+                // Hapus toast setelah 3 detik
+                setTimeout(() => {
+                    toast.style.opacity = '0';
+                    toast.style.transition = 'opacity 0.5s ease';
+                    setTimeout(() => toast.remove(), 500);
+                }, 3000);
+            }
+        }
+
+        // Helper Error UI
+        function showError(title, desc) {
+            errorTitle.innerText = title;
+            errorDesc.innerText = desc;
+            errorMessage.classList.remove('hidden');
+        }
+
+        function hideError() {
+            errorMessage.classList.add('hidden');
         }
     </script>
 </body>

@@ -770,30 +770,61 @@
             }
         });
 
-        // Kontrol Kamera: Benar-benar mematikan/menyalakan hardware video (track.enabled & track.stop/restart jika perlu)
         let isVideoEnabled = true;
-        ui.btnToggleVideo.addEventListener('click', () => {
+        
+        ui.btnToggleVideo.addEventListener('click', async () => {
             if (!localStream) return;
-            
-            const videoTrack = localStream.getVideoTracks()[0];
-            if (videoTrack) {
-                isVideoEnabled = !isVideoEnabled;
+
+            if (isVideoEnabled) {
+                // PROSES MEMATIKAN KAMERA (Lampu indikator akan mati)
+                const videoTrack = localStream.getVideoTracks()[0];
+                if (videoTrack) {
+                    videoTrack.stop(); // Matikan hardware kamera sepenuhnya
+                    localStream.removeTrack(videoTrack); // Hapus track dari stream lokal
+                }
                 
-                // Menonaktifkan track video secara total di tingkat WebRTC (menghentikan pengiriman frame video)
-                videoTrack.enabled = isVideoEnabled;
+                isVideoEnabled = false;
+                ui.videoIcon.innerText = "🚫";
+                ui.videoBtnText.innerText = "Kamera: OFF";
+                ui.localVideo.classList.add('opacity-20', 'grayscale');
                 
-                if (isVideoEnabled) {
+            } else {
+                // PROSES MENYALAKAN KEMBALI KAMERA
+                try {
+                    // Minta akses kamera lagi. 
+                    // Browser TIDAK akan memunculkan popup karena izin sudah diingat di awal sesi.
+                    const newStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                    const newVideoTrack = newStream.getVideoTracks()[0];
+                    
+                    // Tambahkan track video baru ke stream lokal
+                    localStream.addTrack(newVideoTrack);
+                    
+                    // Refresh tampilan video lokal di layar LCD
+                    ui.localVideo.srcObject = localStream;
+                    
+                    // Jika sedang dalam panggilan (terhubung ke PeerConnection), update jalurnya
+                    if (peerConnection) {
+                        const sender = peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
+                        if (sender) {
+                            // Ganti track video lama (yang sudah mati) dengan track video yang baru nyala
+                            sender.replaceTrack(newVideoTrack);
+                        } else {
+                            // Jika sebelumnya tidak ada sender, tambahkan track baru
+                            peerConnection.addTrack(newVideoTrack, localStream);
+                        }
+                    }
+
+                    isVideoEnabled = true;
                     ui.videoIcon.innerText = "📷";
                     ui.videoBtnText.innerText = "Kamera: ON";
                     ui.localVideo.classList.remove('opacity-20', 'grayscale');
-                } else {
-                    ui.videoIcon.innerText = "🚫";
-                    ui.videoBtnText.innerText = "Kamera: OFF";
-                    ui.localVideo.classList.add('opacity-20', 'grayscale');
+                    
+                } catch (error) {
+                    console.error("Gagal menyalakan kembali kamera:", error);
+                    alert("Gagal mengakses perangkat kamera.");
                 }
             }
         });
-
         // Initialize Application
         initApp();
 

@@ -80,6 +80,53 @@
             box-shadow: inset 2px 2px 10px rgba(0,0,0,0.4), 0 0 15px rgba(163, 196, 130, 0.4);
         }
 
+        /* Video Mode Styles */
+        .video-feed {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 1;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .pip-video {
+            position: absolute;
+            bottom: 8px;
+            right: 8px;
+            width: 70px;
+            height: 90px;
+            object-fit: cover;
+            border: 2px solid rgba(255,255,255,0.4);
+            border-radius: 6px;
+            z-index: 2;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .lcd-screen.video-mode {
+            background: #111;
+        }
+        .lcd-screen.video-mode .video-feed,
+        .lcd-screen.video-mode .pip-video {
+            opacity: 1;
+        }
+        .lcd-content {
+            position: relative;
+            z-index: 10;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .lcd-screen.video-mode .lcd-content {
+            color: #fff;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.9), 0 0 8px rgba(0,0,0,0.8);
+        }
+        .lcd-screen.video-mode #rx-indicator {
+            color: #4ade80; /* Hijau terang agar terlihat di atas video */
+        }
+
         .ptt-button {
             background: linear-gradient(145deg, #d32f2f, #b71c1c);
             box-shadow: 
@@ -139,16 +186,23 @@
                 <span class="w-3 h-3 rounded-full bg-red-900 border border-gray-800 shadow-[inset_0_1px_3px_rgba(0,0,0,0.8)]" id="power-led"></span>
             </div>
 
-            <!-- LCD Screen -->
-            <div id="lcd" class="lcd-screen rounded-lg p-3 h-28 mb-6 flex flex-col justify-between text-[#111] transition-colors duration-300">
-                <div class="flex justify-between items-start">
-                    <span class="text-sm font-bold tx-indicator">TX</span>
-                    <span id="rx-indicator" class="text-sm font-bold opacity-0 transition-opacity text-green-900">RX</span>
-                    <span id="status-icon" class="text-sm">✖</span>
-                </div>
-                <div class="text-center">
-                    <div id="lcd-status" class="text-lg font-bold uppercase tracking-wider mb-1">Offline</div>
-                    <div id="lcd-room" class="text-2xl font-bold tracking-widest">---</div>
+            <!-- LCD / Video Screen -->
+            <div id="lcd" class="lcd-screen rounded-lg h-44 mb-6 text-[#111] transition-all duration-300">
+                <!-- Elemen Video -->
+                <video id="remote-video" class="video-feed" autoplay playsinline></video>
+                <video id="local-video" class="pip-video" autoplay playsinline muted></video>
+                
+                <!-- Teks OSD (On Screen Display) -->
+                <div class="lcd-content p-3">
+                    <div class="flex justify-between items-start">
+                        <span class="text-sm font-bold tx-indicator">TX</span>
+                        <span id="rx-indicator" class="text-sm font-bold opacity-0 transition-opacity text-green-900">RX</span>
+                        <span id="status-icon" class="text-sm">✖</span>
+                    </div>
+                    <div class="text-center">
+                        <div id="lcd-status" class="text-lg font-bold uppercase tracking-wider mb-1">Offline</div>
+                        <div id="lcd-room" class="text-2xl font-bold tracking-widest">---</div>
+                    </div>
                 </div>
             </div>
 
@@ -180,6 +234,14 @@
                     Copy Room ID
                 </button>
                 
+                <!-- NEW: Video Toggle Button -->
+                <div class="flex space-x-2 mb-3">
+                    <button id="btn-toggle-video" class="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 py-1.5 px-3 rounded shadow border border-gray-700 flex items-center space-x-1 transition-colors">
+                        <span id="video-icon">📷</span>
+                        <span id="video-btn-text">Kamera: ON</span>
+                    </button>
+                </div>
+                
                 <p class="text-xs text-center text-gray-400 mb-2 font-mono">HOLD TO SPEAK</p>
                 
                 <!-- Large Push to Talk Button -->
@@ -196,9 +258,6 @@
             <div class="h-24 w-full speaker-grille rounded-lg border border-gray-900 shadow-[inset_0_2px_10px_rgba(0,0,0,0.8)]"></div>
         </div>
     </div>
-
-    <!-- Hidden audio element for remote stream -->
-    <audio id="remote-audio" autoplay></audio>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -241,7 +300,11 @@
             btnPtt: document.getElementById('btn-ptt'),
             btnHangup: document.getElementById('btn-hangup'),
             btnCopy: document.getElementById('btn-copy'),
-            remoteAudio: document.getElementById('remote-audio'),
+            btnToggleVideo: document.getElementById('btn-toggle-video'),
+            videoIcon: document.getElementById('video-icon'),
+            videoBtnText: document.getElementById('video-btn-text'),
+            remoteVideo: document.getElementById('remote-video'),
+            localVideo: document.getElementById('local-video'),
             powerLed: document.getElementById('power-led')
         };
 
@@ -250,7 +313,7 @@
                 // --- KONFIGURASI FIREBASE MILIK ANDA ---
                 // Ganti nilai-nilai di bawah ini dengan config dari Firebase Console Anda!
                 const myFirebaseConfig = {
-                    apiKey: "AIzaSyB8Z9x6ovw6AW-bvCJr02Gdzb1-WKMPefw",
+                       apiKey: "AIzaSyB8Z9x6ovw6AW-bvCJr02Gdzb1-WKMPefw",
   authDomain: "walkitalki-6985b.firebaseapp.com",
   projectId: "walkitalki-6985b",
   storageBucket: "walkitalki-6985b.firebasestorage.app",
@@ -333,17 +396,22 @@
         async function openUserMedia() {
             initAudioContext(); // Ensure audio context is ready on user gesture
             try {
-                localStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
+                // Request video dan audio
+                localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
                 
-                // Mute local stream immediately. PTT will unmute it.
+                // Tampilkan kamera lokal di mode Picture-in-Picture & ubah layar ke mode Video
+                ui.localVideo.srcObject = localStream;
+                ui.lcd.classList.add('video-mode');
+                
+                // Mute stream audio (mikrofon) lokal secara default. Hanya aktif saat PTT ditekan.
                 localStream.getAudioTracks().forEach(track => {
                     track.enabled = false;
                 });
                 return true;
             } catch (error) {
                 console.error("Error accessing media devices.", error);
-                updateLCD("NO MIC", "---", "✖");
-                alert("Microphone access is required to use the Walkie Talkie.");
+                updateLCD("NO CAM/MIC", "---", "✖");
+                alert("Akses Kamera dan Mikrofon diperlukan untuk Video Walkie Talkie.");
                 return false;
             }
         }
@@ -509,10 +577,10 @@
 
         function setupWebRTCListeners() {
             peerConnection.addEventListener('track', event => {
-                // When we receive a remote stream
+                // When we receive a remote stream (audio atau video)
                 if (!remoteStream) {
                     remoteStream = new MediaStream();
-                    ui.remoteAudio.srcObject = remoteStream;
+                    ui.remoteVideo.srcObject = remoteStream;
                 }
                 remoteStream.addTrack(event.track);
 
@@ -649,7 +717,11 @@
                 localStream = null;
             }
             remoteStream = null;
-            ui.remoteAudio.srcObject = null;
+            
+            // Bersihkan video element dan kembalikan layar ke LCD hijau
+            ui.remoteVideo.srcObject = null;
+            ui.localVideo.srcObject = null;
+            ui.lcd.classList.remove('video-mode');
 
             // Optional: delete room from firestore if caller
             if (isCaller && roomId && auth.currentUser) {
@@ -696,6 +768,28 @@
                     ui.btnCopy.innerText = "Copied!";
                     setTimeout(() => ui.btnCopy.innerText = originalText, 2000);
                 } catch(e) { console.error("Copy failed", e); }
+            }
+        });
+
+        // NEW: Toggle Video Track Enabled State
+        let isVideoEnabled = true;
+        ui.btnToggleVideo.addEventListener('click', () => {
+            if (!localStream) return;
+            
+            const videoTrack = localStream.getVideoTracks()[0];
+            if (videoTrack) {
+                isVideoEnabled = !isVideoEnabled;
+                videoTrack.enabled = isVideoEnabled;
+                
+                if (isVideoEnabled) {
+                    ui.videoIcon.innerText = "📷";
+                    ui.videoBtnText.innerText = "Kamera: ON";
+                    ui.localVideo.classList.remove('opacity-20');
+                } else {
+                    ui.videoIcon.innerText = "🚫";
+                    ui.videoBtnText.innerText = "Kamera: OFF";
+                    ui.localVideo.classList.add('opacity-20');
+                }
             }
         });
 

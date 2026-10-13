@@ -1,588 +1,684 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shopee Media Downloader</title>
-    <!-- Tailwind CSS -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>WebRTC Walkie Talkie</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
-    <!-- FontAwesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Custom Config untuk Warna Shopee -->
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        shopee: {
-                            DEFAULT: '#ee4d2d',
-                            light: '#f57c61',
-                            dark: '#d03e1e',
-                            bg: '#f5f5f5'
-                        }
-                    },
-                    fontFamily: {
-                        sans: ['Roboto', 'sans-serif'],
-                    }
-                }
-            }
-        }
-    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <style>
+        /* Custom Walkie Talkie Styles */
         body {
-            background-color: #f5f5f5;
+            background-color: #1a1a1a;
+            background-image: radial-gradient(circle at center, #2a2a2a 0%, #111 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            touch-action: manipulation; /* Prevent zoom on double tap */
         }
-        .material-shadow {
-            box-shadow: 0 2px 1px -1px rgba(0,0,0,.2), 0 1px 1px 0 rgba(0,0,0,.14), 0 1px 3px 0 rgba(0,0,0,.12);
+
+        .walkie-body {
+            background: linear-gradient(145deg, #2b3327, #1a2017);
+            border-radius: 30px;
+            box-shadow: 
+                -10px 10px 20px #0a0d09,
+                10px -10px 20px #34412f,
+                inset 2px 2px 5px rgba(255,255,255,0.1),
+                inset -5px -5px 15px rgba(0,0,0,0.5);
+            position: relative;
+            z-index: 10;
         }
-        .material-shadow-hover:hover {
-            box-shadow: 0 3px 3px -2px rgba(0,0,0,.2), 0 3px 4px 0 rgba(0,0,0,.14), 0 1px 8px 0 rgba(0,0,0,.12);
+
+        .antenna {
+            position: absolute;
+            top: -80px;
+            right: 40px;
+            width: 24px;
+            height: 100px;
+            background: linear-gradient(to right, #111, #333, #111);
+            border-radius: 12px 12px 0 0;
+            z-index: 1;
+            box-shadow: inset -2px 0 5px rgba(0,0,0,0.5);
         }
-        /* Spinner Animasi */
-        .loader {
-            border: 4px solid #f3f3f3;
-            border-radius: 50%;
-            border-top: 4px solid #ee4d2d;
+        
+        .antenna::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: -4px;
+            width: 32px;
+            height: 20px;
+            background: #222;
+            border-radius: 5px 5px 0 0;
+        }
+
+        .volume-knob {
+            position: absolute;
+            top: -25px;
+            left: 50px;
             width: 40px;
-            height: 40px;
-            -webkit-animation: spin 1s linear infinite; /* Safari */
-            animation: spin 1s linear infinite;
+            height: 30px;
+            background: repeating-linear-gradient(90deg, #222, #222 2px, #444 2px, #444 4px);
+            border-radius: 5px 5px 0 0;
+            z-index: 1;
         }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+
+        .lcd-screen {
+            background: #8b9d77;
+            font-family: 'Share Tech Mono', monospace;
+            box-shadow: inset 2px 2px 10px rgba(0,0,0,0.5);
+            text-shadow: 1px 1px 0px rgba(162, 185, 137, 0.5);
+            position: relative;
+            overflow: hidden;
         }
-        /* Transisi halus */
-        .fade-in {
-            animation: fadeIn 0.4s ease-in-out;
+
+        .lcd-screen.active {
+            background: #a3c482;
+            box-shadow: inset 2px 2px 10px rgba(0,0,0,0.4), 0 0 15px rgba(163, 196, 130, 0.4);
         }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+
+        .ptt-button {
+            background: linear-gradient(145deg, #d32f2f, #b71c1c);
+            box-shadow: 
+                -4px 4px 10px #11150f,
+                4px -4px 10px #3f4d39,
+                inset 2px 2px 5px rgba(255,100,100,0.4);
+            transition: all 0.1s ease;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .ptt-button:active, .ptt-button.pressed {
+            background: #9a0007;
+            box-shadow: 
+                inset 4px 4px 10px rgba(0,0,0,0.6),
+                inset -2px -2px 5px rgba(255,255,255,0.1);
+            transform: scale(0.96) translateY(2px);
+        }
+
+        .speaker-grille {
+            background: radial-gradient(#111 20%, transparent 25%);
+            background-size: 10px 10px;
+            opacity: 0.8;
+        }
+
+        /* Pulse animation for transmitting status */
+        @keyframes pulse-tx {
+            0% { opacity: 1; }
+            50% { opacity: 0.4; }
+            100% { opacity: 1; }
+        }
+        .tx-indicator {
+            display: none;
+        }
+        .transmitting .tx-indicator {
+            display: inline-block;
+            animation: pulse-tx 0.8s infinite;
+            color: #d32f2f;
+            text-shadow: 0 0 5px red;
         }
     </style>
 </head>
-<body class="text-gray-800 antialiased min-h-screen flex flex-col">
+<body class="text-gray-200 antialiased">
 
-    <!-- Navbar -->
-    <nav class="bg-white material-shadow sticky top-0 z-50">
-        <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 bg-shopee text-white rounded-full flex items-center justify-center text-xl shadow-md">
-                    <i class="fa-solid fa-bag-shopping"></i>
-                </div>
-                <h1 class="text-xl font-bold text-shopee">Shopee Extract</h1>
-            </div>
-            <a href="#" class="text-gray-500 hover:text-shopee transition"><i class="fa-brands fa-github text-2xl"></i></a>
-        </div>
-    </nav>
+    <!-- Main Walkie Talkie Device -->
+    <div class="relative w-80 max-w-[95vw] mt-16 mb-8">
+        <!-- Physical parts -->
+        <div class="antenna"></div>
+        <div class="volume-knob"></div>
 
-    <!-- Main Content -->
-    <main class="flex-grow max-w-6xl mx-auto px-4 py-8 w-full">
-        
-        <!-- Hero & Input Section -->
-        <section class="bg-white rounded-xl material-shadow p-6 mb-8 fade-in">
-            <div class="text-center mb-6">
-                <h2 class="text-2xl md:text-3xl font-bold mb-2">Download Media Produk Shopee</h2>
-                <p class="text-gray-500 text-sm md:text-base">Masukkan link produk Shopee untuk mengekstrak dan mengunduh gambar serta video berkualitas tinggi secara otomatis.</p>
-            </div>
-
-            <div class="max-w-3xl mx-auto">
-                <div class="flex flex-col md:flex-row gap-3">
-                    <div class="relative flex-grow">
-                        <div class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-gray-400">
-                            <i class="fa-solid fa-link"></i>
-                        </div>
-                        <input type="text" id="urlInput" 
-                            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-shopee focus:border-shopee block w-full pl-10 p-3.5 transition shadow-sm" 
-                            placeholder="Contoh: https://shopee.co.id/Nama-Produk-i.123456.7890123" required>
-                    </div>
-                    <button id="extractBtn" onclick="handleExtract()" 
-                        class="bg-shopee hover:bg-shopee-dark text-white font-medium rounded-lg text-sm px-6 py-3.5 focus:ring-4 focus:outline-none focus:ring-red-300 transition material-shadow flex items-center justify-center gap-2 whitespace-nowrap min-w-[140px]">
-                        <i class="fa-solid fa-magnifying-glass"></i>
-                        <span>Ekstrak</span>
-                    </button>
-                </div>
-                
-                <!-- Manual Mode Toggle -->
-                <div class="mt-4 flex flex-col items-center">
-                    <button onclick="toggleManualMode()" class="text-sm text-shopee hover:underline focus:outline-none flex items-center gap-1 transition">
-                        <i class="fa-solid fa-screwdriver-wrench"></i> Akses Diblokir Shopee? Gunakan Mode Manual
-                    </button>
-                </div>
-
-                <!-- Manual Mode Section -->
-                <div id="manualModeSection" class="hidden mt-4 bg-red-50 border border-red-200 rounded-lg p-5 text-sm text-gray-800 fade-in material-shadow">
-                    <p class="font-bold mb-3 text-red-600 text-base"><i class="fa-solid fa-shield-halved mr-1"></i> Bypass Sistem Keamanan Shopee</p>
-                    
-                    <div class="bg-yellow-100 border-l-4 border-yellow-500 p-3 mb-4 text-yellow-800 rounded">
-                        <p class="font-bold text-sm"><i class="fa-solid fa-circle-exclamation mr-1"></i> Penting: Wajib Login Shopee</p>
-                        <p class="text-xs mt-1">Karena pembaruan keamanan, pastikan Anda <b>sudah login ke akun Shopee</b> di browser ini sebelum melakukan langkah di bawah.</p>
-                    </div>
-
-                    <p class="mb-3 text-gray-600">Jika ekstrak otomatis gagal (diminta login / diblokir), lakukan langkah ini:</p>
-                    <ol class="list-decimal list-inside space-y-2 mb-4 font-medium">
-                        <li>Buka tab baru dan <b>Login ke shopee.co.id</b> (jika Anda belum login).</li>
-                        <li>Klik link API berikut (akan terbuka di tab baru):<br>
-                            <a id="manualApiLink" href="#" target="_blank" class="text-blue-600 hover:text-blue-800 hover:underline break-all ml-5 block mt-2 bg-white p-3 border border-gray-200 rounded shadow-sm">Link API akan muncul setelah Anda klik tombol Ekstrak di atas.</a>
-                        </li>
-                        <li>Tekan <kbd class="bg-gray-100 border border-gray-300 px-1 rounded">Ctrl+A</kbd> lalu <kbd class="bg-gray-100 border border-gray-300 px-1 rounded">Ctrl+C</kbd> untuk menyalin <b>seluruh teks</b> di halaman API tersebut.</li>
-                        <li>Paste / Tempel (<kbd class="bg-gray-100 border border-gray-300 px-1 rounded">Ctrl+V</kbd>) teks tersebut ke kotak di bawah ini:</li>
-                    </ol>
-                    <textarea id="manualJsonInput" rows="4" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-shopee focus:border-shopee font-mono text-xs mb-3 shadow-sm transition" placeholder='Paste data JSON di sini (Contoh: {"data": {"itemid": ...}} )'></textarea>
-                    <button onclick="handleManualExtract()" class="bg-gray-800 hover:bg-black text-white font-medium px-5 py-2.5 rounded-lg shadow transition w-full md:w-auto flex justify-center items-center gap-2">
-                        <i class="fa-solid fa-file-import"></i> Ekstrak Data Manual
-                    </button>
-                </div>
-
-                <p class="text-xs text-gray-400 mt-4 text-center"><i class="fa-solid fa-circle-info mr-1"></i> Gunakan link produk format panjang (bukan shp.ee)</p>
-            </div>
-        </section>
-
-        <!-- Loading State -->
-        <div id="loadingState" class="hidden flex-col items-center justify-center py-12">
-            <div class="loader mb-4"></div>
-            <p class="text-gray-600 font-medium">Sedang mengambil data dari Shopee...</p>
-        </div>
-
-        <!-- Error Message -->
-        <div id="errorMessage" class="hidden max-w-3xl mx-auto bg-red-50 border-l-4 border-red-500 p-4 mb-8 rounded-r-lg shadow-sm fade-in">
-            <div class="flex items-start">
-                <div class="flex-shrink-0 text-red-500 mt-0.5">
-                    <i class="fa-solid fa-triangle-exclamation"></i>
-                </div>
-                <div class="ml-3">
-                    <h3 class="text-red-800 font-medium" id="errorTitle">Gagal Mengekstrak</h3>
-                    <p class="text-red-600 text-sm mt-1" id="errorDesc">URL tidak valid atau produk tidak ditemukan.</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Results Section -->
-        <section id="resultsSection" class="hidden fade-in">
-            <!-- Product Info -->
-            <div id="productInfo" class="bg-white rounded-xl material-shadow p-4 mb-6 flex items-center gap-4">
-                <!-- Diisi via JS -->
-            </div>
-
-            <!-- Video Section -->
-            <div id="videoSection" class="mb-8 hidden">
-                <h3 class="text-lg font-bold border-b-2 border-shopee inline-block pb-1 mb-4 text-gray-800"><i class="fa-solid fa-video text-shopee mr-2"></i>Video Produk</h3>
-                <div id="videoGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                    <!-- Diisi via JS -->
-                </div>
-            </div>
-
-            <!-- Images Section -->
-            <div id="imageSection" class="mb-8 hidden">
-                <div class="flex justify-between items-center mb-4 border-b-2 border-shopee pb-1">
-                    <h3 class="text-lg font-bold text-gray-800"><i class="fa-regular fa-image text-shopee mr-2"></i>Gambar Produk</h3>
-                </div>
-                <div id="imageGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                    <!-- Diisi via JS -->
-                </div>
-            </div>
-        </section>
-    </main>
-
-    <!-- Footer -->
-    <footer class="bg-white border-t border-gray-200 mt-auto">
-        <div class="max-w-6xl mx-auto px-4 py-6 text-center">
-            <p class="text-gray-500 text-sm">© 2026 Shopee Media Extractor. Alat independen, tidak berafiliasi dengan Shopee.</p>
-        </div>
-    </footer>
-
-    <script>
-        // Constants & Utilities
-        const SHOPEE_IMAGE_BASE = "https://cf.shopee.co.id/file/";
-        
-        // Element References
-        const urlInput = document.getElementById('urlInput');
-        const extractBtn = document.getElementById('extractBtn');
-        const loadingState = document.getElementById('loadingState');
-        const errorMessage = document.getElementById('errorMessage');
-        const errorTitle = document.getElementById('errorTitle');
-        const errorDesc = document.getElementById('errorDesc');
-        const resultsSection = document.getElementById('resultsSection');
-        const productInfo = document.getElementById('productInfo');
-        
-        const videoSection = document.getElementById('videoSection');
-        const videoGrid = document.getElementById('videoGrid');
-        const imageSection = document.getElementById('imageSection');
-        const imageGrid = document.getElementById('imageGrid');
-
-        // Manual Mode Elements
-        const manualModeSection = document.getElementById('manualModeSection');
-        const manualApiLink = document.getElementById('manualApiLink');
-        const manualJsonInput = document.getElementById('manualJsonInput');
-
-        let currentApiUrl = "";
-
-        function toggleManualMode() {
-            manualModeSection.classList.toggle('hidden');
-            if(currentApiUrl) {
-                manualApiLink.href = currentApiUrl;
-                manualApiLink.innerText = currentApiUrl;
-            }
-        }
-
-        function handleManualExtract() {
-            const rawText = manualJsonInput.value.trim();
-            if (!rawText) {
-                showError("Input Kosong", "Silakan paste data JSON dari link API yang telah disediakan.");
-                return;
-            }
-            try {
-                const data = JSON.parse(rawText);
-                
-                // Deteksi spesifik jika belum login
-                if (data.error === 9030999 || (data.error_msg && data.error_msg.toLowerCase().includes("login"))) {
-                    showError("Wajib Login", "Shopee memblokir akses karena Anda belum login. Buka shopee.co.id di tab baru, login ke akun Anda, lalu klik link API dan ulangi proses ini.");
-                    return;
-                }
-
-                if (data.error) {
-                    showError("Shopee Error", data.error_msg || "Produk tidak ditemukan atau akses ditolak oleh Shopee.");
-                    return;
-                }
-                if (!data.data) {
-                    showError("Format Salah", "Data yang Anda paste tidak memiliki properti data yang benar. Pastikan Anda menyalin (copy) SELURUH teks yang ada di halaman API.");
-                    return;
-                }
-                
-                // Jika Berhasil:
-                hideError();
-                manualJsonInput.value = ''; // Bersihkan form
-                resultsSection.classList.add('hidden');
-                
-                // Gunakan fungsi render yang sama
-                renderResults(data.data);
-            } catch (e) {
-                showError("Format Tidak Valid", "Teks yang dipaste bukan format JSON yang benar. Pastikan Anda tidak salah copy.");
-            }
-        }
-
-        // Allow pressing Enter to search
-        urlInput.addEventListener('keypress', function (e) {
-            if (e.key === 'Enter') handleExtract();
-        });
-
-        /**
-         * Mengekstrak Shop ID dan Item ID dari URL Shopee.
-         * Mendukung format:
-         * 1. shopee.co.id/product/123/456
-         * 2. shopee.co.id/Nama-Produk-Panjang-i.123.456
-         */
-        function extractIds(url) {
-            try {
-                // Hapus query parameters jika ada
-                const cleanUrl = url.split('?')[0];
-                
-                // Format 1: -i.shopId.itemId
-                const regexFormat1 = /-i\.(\d+)\.(\d+)/;
-                const match1 = cleanUrl.match(regexFormat1);
-                if (match1 && match1.length === 3) {
-                    return { shopId: match1[1], itemId: match1[2] };
-                }
-
-                // Format 2: product/shopId/itemId
-                const regexFormat2 = /product\/(\d+)\/(\d+)/;
-                const match2 = cleanUrl.match(regexFormat2);
-                if (match2 && match2.length === 3) {
-                    return { shopId: match2[1], itemId: match2[2] };
-                }
-
-                return null;
-            } catch (e) {
-                return null;
-            }
-        }
-
-        async function handleExtract() {
-            const url = urlInput.value.trim();
+        <!-- Body -->
+        <div class="walkie-body p-6 border-4 border-[#1a2017]">
             
-            if (!url) {
-                showError("Input Kosong", "Silakan masukkan link produk terlebih dahulu.");
-                return;
-            }
+            <!-- Brand / Top Area -->
+            <div class="flex justify-between items-center mb-4 text-xs font-bold tracking-widest text-gray-500 uppercase">
+                <span>Comms-Pro</span>
+                <span class="w-3 h-3 rounded-full bg-red-900 border border-gray-800 shadow-[inset_0_1px_3px_rgba(0,0,0,0.8)]" id="power-led"></span>
+            </div>
 
-            const ids = extractIds(url);
-            if (!ids) {
-                showError("Link Tidak Valid", "Pastikan URL adalah link produk Shopee yang benar. Link pendek (shp.ee) tidak didukung saat ini.");
-                return;
-            }
+            <!-- LCD Screen -->
+            <div id="lcd" class="lcd-screen rounded-lg p-3 h-28 mb-6 flex flex-col justify-between text-[#111] transition-colors duration-300">
+                <div class="flex justify-between items-start">
+                    <span class="text-sm font-bold tx-indicator">TX</span>
+                    <span id="rx-indicator" class="text-sm font-bold opacity-0 transition-opacity text-green-900">RX</span>
+                    <span id="status-icon" class="text-sm">✖</span>
+                </div>
+                <div class="text-center">
+                    <div id="lcd-status" class="text-lg font-bold uppercase tracking-wider mb-1">Offline</div>
+                    <div id="lcd-room" class="text-2xl font-bold tracking-widest">---</div>
+                </div>
+            </div>
 
-            // Set & Update Link API untuk Mode Manual
-            currentApiUrl = `https://shopee.co.id/api/v4/item/get?itemid=${ids.itemId}&shopid=${ids.shopId}`;
-            if (manualApiLink) {
-                manualApiLink.href = currentApiUrl;
-                manualApiLink.innerText = currentApiUrl;
-            }
+            <!-- Connection Controls (Hidden during call) -->
+            <div id="setup-panel" class="space-y-4 mb-6">
+                <div>
+                    <button id="btn-create" class="w-full bg-gray-800 hover:bg-gray-700 text-white font-bold py-3 px-4 rounded-lg shadow-[inset_0_1px_0_rgba(255,255,255,0.1),_0_2px_4px_rgba(0,0,0,0.5)] border border-gray-900 transition-colors">
+                        Create New Room
+                    </button>
+                </div>
+                
+                <div class="relative flex py-2 items-center">
+                    <div class="flex-grow border-t border-gray-700"></div>
+                    <span class="flex-shrink-0 mx-4 text-gray-500 text-xs uppercase font-bold">OR</span>
+                    <div class="flex-grow border-t border-gray-700"></div>
+                </div>
 
-            // Reset UI
-            hideError();
-            resultsSection.classList.add('hidden');
-            loadingState.classList.remove('hidden');
-            extractBtn.disabled = true;
-            extractBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Menunggu...`;
+                <div class="flex space-x-2">
+                    <input type="text" id="join-room-id" placeholder="Room ID" class="w-2/3 bg-gray-900 border border-gray-700 text-white text-center rounded-lg focus:outline-none focus:border-green-500 uppercase tracking-widest font-mono" autocomplete="off">
+                    <button id="btn-join" class="w-1/3 bg-gray-800 hover:bg-gray-700 text-white font-bold py-3 px-2 rounded-lg shadow-[inset_0_1px_0_rgba(255,255,255,0.1),_0_2px_4px_rgba(0,0,0,0.5)] border border-gray-900 transition-colors text-sm">
+                        Join
+                    </button>
+                </div>
+            </div>
 
+            <!-- Active Call Controls (Hidden initially) -->
+            <div id="call-panel" class="hidden mb-6 flex flex-col items-center">
+                <button id="btn-copy" class="mb-4 text-xs bg-gray-800 text-gray-300 py-1 px-3 rounded shadow border border-gray-700 hover:text-white">
+                    Copy Room ID
+                </button>
+                
+                <p class="text-xs text-center text-gray-400 mb-2 font-mono">HOLD TO SPEAK</p>
+                
+                <!-- Large Push to Talk Button -->
+                <button id="btn-ptt" class="ptt-button w-32 h-32 rounded-full flex items-center justify-center border-4 border-[#111]">
+                    <span class="text-white font-bold text-xl tracking-wider text-shadow-sm">PTT</span>
+                </button>
+                
+                <button id="btn-hangup" class="mt-8 text-xs text-red-500 hover:text-red-400 uppercase tracking-widest font-bold">
+                    Disconnect
+                </button>
+            </div>
+
+            <!-- Speaker Grille -->
+            <div class="h-24 w-full speaker-grille rounded-lg border border-gray-900 shadow-[inset_0_2px_10px_rgba(0,0,0,0.8)]"></div>
+        </div>
+    </div>
+
+    <!-- Hidden audio element for remote stream -->
+    <audio id="remote-audio" autoplay></audio>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, updateDoc, deleteDoc, collection, onSnapshot, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Global state variables
+        let app, db, auth;
+        let appId, userId;
+        let peerConnection = null;
+        let localStream = null;
+        let remoteStream = null;
+        let roomId = null;
+        let isCaller = false;
+        
+        let audioContext = null;
+        
+        // STUN servers for WebRTC
+        const configuration = {
+            iceServers: [
+                { urls: 'stun:stun1.l.google.com:19302' },
+                { urls: 'stun:stun2.l.google.com:19302' }
+            ]
+        };
+
+        // UI Elements
+        const ui = {
+            lcd: document.getElementById('lcd'),
+            lcdStatus: document.getElementById('lcd-status'),
+            lcdRoom: document.getElementById('lcdRoom'),
+            lcdRoomText: document.getElementById('lcd-room'),
+            statusIcon: document.getElementById('status-icon'),
+            rxIndicator: document.getElementById('rx-indicator'),
+            setupPanel: document.getElementById('setup-panel'),
+            callPanel: document.getElementById('call-panel'),
+            btnCreate: document.getElementById('btn-create'),
+            btnJoin: document.getElementById('btn-join'),
+            joinInput: document.getElementById('join-room-id'),
+            btnPtt: document.getElementById('btn-ptt'),
+            btnHangup: document.getElementById('btn-hangup'),
+            btnCopy: document.getElementById('btn-copy'),
+            remoteAudio: document.getElementById('remote-audio'),
+            powerLed: document.getElementById('power-led')
+        };
+
+        async function initApp() {
             try {
-                // Endpoint Shopee API (Public/Mobile)
-                const apiUrl = currentApiUrl;
+                // Initialize Firebase using environment provided config
+                appId = typeof __app_id !== 'undefined' ? __app_id : 'walkie-talkie-app';
+                const firebaseConfig = typeof __firebase_config !== 'undefined' ? 
+                                       JSON.parse(__firebase_config) : 
+                                       {}; // Will fail if no config provided, standard behavior for this env.
                 
-                // Daftar proxy diperbarui, memprioritaskan proxy raw karena lebih stabil
-                const proxies = [
-                    { url: `https://corsproxy.io/?${encodeURIComponent(apiUrl)}`, type: 'raw' },
-                    { url: `https://api.allorigins.win/raw?url=${encodeURIComponent(apiUrl)}`, type: 'raw' },
-                    { url: `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(apiUrl)}`, type: 'raw' },
-                    { url: `https://api.allorigins.win/get?url=${encodeURIComponent(apiUrl)}`, type: 'wrapper' }
-                ];
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
 
-                let shopeeData = null;
-
-                // Coba setiap proxy secara berurutan sampai ada yang berhasil
-                for (const proxy of proxies) {
-                    try {
-                        const response = await fetch(proxy.url);
-                        
-                        if (response.ok) {
-                            let data = null;
-                            
-                            // Penanganan khusus untuk allorigins/get yang membungkus data ke dalam string 'contents'
-                            if (proxy.type === 'wrapper') {
-                                const wrapper = await response.json();
-                                if (wrapper && wrapper.contents) {
-                                    try {
-                                        data = JSON.parse(wrapper.contents);
-                                    } catch (parseError) {
-                                        throw new Error("Gagal mem-parsing data dari wrapper proxy.");
-                                    }
-                                }
-                            } else {
-                                // Fallback jika proxy mereturn non-JSON (misal: halaman captcha/blokir Shopee)
-                                const text = await response.text();
-                                try {
-                                    data = JSON.parse(text);
-                                } catch (parseError) {
-                                    throw new Error("Respons bukan JSON. Proxy kemungkinan diblokir oleh sistem anti-bot Shopee.");
-                                }
-                            }
-
-                            // Validasi minimal: pastikan objek memiliki 'data' atau 'error' dari struktur Shopee
-                            if (data && (data.data !== undefined || data.error !== undefined)) {
-                                shopeeData = data;
-                                break; // Proxy berhasil, keluar dari loop
-                            } else {
-                                throw new Error("Format respons tidak sesuai dengan standar API Shopee.");
-                            }
-                        }
-                    } catch (e) {
-                        console.warn(`Proxy gagal (${proxy.url}):`, e.message);
-                        // Tunggu 500ms sebelum mencoba proxy berikutnya
-                        await new Promise(resolve => setTimeout(resolve, 500));
-                    }
-                }
-
-                if (!shopeeData) {
-                    // Tampilkan kotak mode manual otomatis jika proxy diblokir Shopee
-                    manualModeSection.classList.remove('hidden');
-                    throw new Error("Gagal mengekstrak secara otomatis. Shopee memblokir akses proxy. Silakan gunakan 'Mode Manual' yang muncul di atas.");
-                }
-
-                // Handling respon error dari Shopee (misal produk dihapus, diblokir karena bot, dll)
-                if (shopeeData.error) {
-                    // Deteksi jika Shopee meminta login
-                    if (shopeeData.error === 9030999 || (shopeeData.error_msg && shopeeData.error_msg.toLowerCase().includes("login"))) {
-                        manualModeSection.classList.remove('hidden');
-                        throw new Error("Shopee meminta otentikasi (Login). Silakan gunakan Mode Manual di atas setelah memastikan Anda login ke shopee.co.id di tab baru.");
-                    }
-                    throw new Error(`Shopee Error: ${shopeeData.error_msg || 'Produk tidak ditemukan atau akses diblokir sementara.'}`);
+                // Authenticate
+                if (typeof __initial_auth_token !== 'undefined') {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
                 }
                 
-                if (!shopeeData.data) {
-                    throw new Error("Data produk tidak ditemukan di respons Shopee.");
-                }
-
-                renderResults(shopeeData.data);
+                userId = auth.currentUser.uid;
+                
+                updateLCD("READY", "---", "●");
+                ui.powerLed.classList.remove('bg-red-900');
+                ui.powerLed.classList.add('bg-green-500', 'shadow-[0_0_8px_#4ade80]');
+                ui.lcd.classList.add('active');
 
             } catch (error) {
-                console.error(error);
-                showError("Gagal Mengambil Data", error.message);
-            } finally {
-                loadingState.classList.add('hidden');
-                extractBtn.disabled = false;
-                extractBtn.innerHTML = `<i class="fa-solid fa-magnifying-glass"></i><span>Ekstrak</span>`;
+                console.error("Firebase init error:", error);
+                updateLCD("ERR: AUTH", "---", "✖");
             }
         }
 
-        function renderResults(item) {
-            // Bersihkan konten sebelumnya
-            videoGrid.innerHTML = '';
-            imageGrid.innerHTML = '';
-            
-            // 1. Render Product Info
-            const mainImg = item.image ? `${SHOPEE_IMAGE_BASE}${item.image}` : 'https://placehold.co/100x100/eeeeee/999999?text=No+Image';
-            const priceStr = item.price_min ? `Rp ${(item.price_min / 100000).toLocaleString('id-ID')}` : '-';
-            
-            productInfo.innerHTML = `
-                <img src="${mainImg}" alt="Thumbnail" class="w-16 h-16 object-cover rounded-md border border-gray-200">
-                <div class="flex-grow overflow-hidden">
-                    <h3 class="font-medium text-gray-800 text-sm md:text-base truncate" title="${item.name}">${item.name}</h3>
-                    <p class="text-shopee font-bold mt-1">${priceStr}</p>
-                </div>
-            `;
-
-            // 2. Render Videos
-            let hasVideo = false;
-            if (item.video_info_list && item.video_info_list.length > 0) {
-                item.video_info_list.forEach((video, index) => {
-                    // Cari format video dengan resolusi terbaik
-                    let videoUrl = "";
-                    if (video.formats && video.formats.length > 0) {
-                        videoUrl = video.formats[video.formats.length - 1].url; // Biasanya array terakhir adalah HQ
-                    } else if (video.default_format && video.default_format.url) {
-                        videoUrl = video.default_format.url;
-                    }
-
-                    if (videoUrl) {
-                        hasVideo = true;
-                        const posterUrl = video.thumb_url ? video.thumb_url : '';
-                        const title = `Video Produk ${index + 1}`;
-                        
-                        const videoCard = document.createElement('div');
-                        videoCard.className = 'bg-white rounded-xl overflow-hidden material-shadow border border-gray-100 flex flex-col transition material-shadow-hover';
-                        
-                        videoCard.innerHTML = `
-                            <div class="relative bg-black aspect-[9/16] w-full flex items-center justify-center">
-                                <video controls poster="${posterUrl}" class="w-full h-full object-contain">
-                                    <source src="${videoUrl}" type="video/mp4">
-                                    Browser tidak mendukung tag video.
-                                </video>
-                            </div>
-                            <div class="p-3 bg-gray-50 flex justify-center border-t border-gray-100">
-                                <button onclick="triggerDownload('${videoUrl}', 'Shopee_Video_${item.itemid}_${index+1}.mp4')" 
-                                    class="w-full bg-shopee hover:bg-shopee-dark text-white text-sm font-medium py-2 px-4 rounded transition flex items-center justify-center gap-2">
-                                    <i class="fa-solid fa-download"></i> Download Video
-                                </button>
-                            </div>
-                        `;
-                        videoGrid.appendChild(videoCard);
-                    }
-                });
+        function initAudioContext() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
             }
-            
-            if (hasVideo) {
-                videoSection.classList.remove('hidden');
-            } else {
-                videoSection.classList.add('hidden');
-            }
-
-            // 3. Render Images
-            let hasImage = false;
-            if (item.images && item.images.length > 0) {
-                hasImage = true;
-                item.images.forEach((imgHash, index) => {
-                    const imgUrl = `${SHOPEE_IMAGE_BASE}${imgHash}`;
-                    const fileName = `Shopee_Img_${item.itemid}_${index+1}.jpg`;
-                    
-                    const imgCard = document.createElement('div');
-                    imgCard.className = 'bg-white rounded-lg overflow-hidden material-shadow border border-gray-100 flex flex-col group relative transition material-shadow-hover';
-                    
-                    imgCard.innerHTML = `
-                        <div class="relative aspect-square w-full bg-gray-100 overflow-hidden">
-                            <img src="${imgUrl}" alt="Gambar ${index+1}" class="w-full h-full object-cover transition duration-300 group-hover:scale-105">
-                        </div>
-                        <div class="p-2 border-t border-gray-100">
-                             <button onclick="triggerDownload('${imgUrl}', '${fileName}')" 
-                                class="w-full bg-gray-100 hover:bg-shopee hover:text-white text-gray-700 text-xs font-medium py-2 px-2 rounded transition flex items-center justify-center gap-1">
-                                <i class="fa-solid fa-download"></i> Simpan
-                            </button>
-                        </div>
-                    `;
-                    imageGrid.appendChild(imgCard);
-                });
-            }
-
-            if (hasImage) {
-                imageSection.classList.remove('hidden');
-            } else {
-                imageSection.classList.add('hidden');
-            }
-
-            // Tampilkan section hasil jika ada gambar/video
-            if (hasImage || hasVideo) {
-                resultsSection.classList.remove('hidden');
-                // Scroll ke hasil
-                resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            } else {
-                showError("Hasil Kosong", "Tidak ditemukan gambar atau video pada produk ini.");
+            if (audioContext.state === 'suspended') {
+                audioContext.resume();
             }
         }
 
-        /**
-         * Mengunduh file dengan mengabaikan perilaku browser yang membuka file media di tab baru.
-         * Menggunakan fetch dan URL.createObjectURL.
-         */
-        async function triggerDownload(url, filename) {
-            // Tampilkan feedback visual
-            const toast = document.createElement('div');
-            toast.className = 'fixed bottom-4 right-4 bg-gray-800 text-white px-4 py-2 rounded shadow-lg text-sm z-50 fade-in';
-            toast.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Mengunduh...`;
-            document.body.appendChild(toast);
+        // Generates walkie-talkie squelch/beep sounds using oscillators
+        function playSfx(type) {
+            if (!audioContext) return;
+            
+            const osc = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+            osc.connect(gain);
+            gain.connect(audioContext.destination);
 
+            const now = audioContext.currentTime;
+
+            if (type === 'tx-start') {
+                // Chirp up
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(800, now);
+                osc.frequency.exponentialRampToValueAtTime(1200, now + 0.1);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                osc.start(now);
+                osc.stop(now + 0.1);
+            } else if (type === 'tx-end') {
+                // Roger beep
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(1200, now);
+                osc.frequency.setValueAtTime(1200, now + 0.1);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.setValueAtTime(0.1, now + 0.1);
+                osc.start(now);
+                osc.stop(now + 0.1);
+            }
+        }
+
+        async function openUserMedia() {
+            initAudioContext(); // Ensure audio context is ready on user gesture
             try {
-                // Coba fetch secara langsung
-                // Jika URL berada di origin berbeda dan tidak punya header CORS, ini akan gagal
-                // Namun CDN Shopee biasanya mengizinkan GET requests (meski mungkin restricted CORS header)
-                const response = await fetch(url);
-                if (!response.ok) throw new Error("Gagal mengambil file.");
+                localStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
                 
-                const blob = await response.blob();
-                const objectUrl = window.URL.createObjectURL(blob);
-                
-                const link = document.createElement('a');
-                link.href = objectUrl;
-                link.download = filename;
-                document.body.appendChild(link);
-                link.click();
-                
-                // Cleanup
-                setTimeout(() => {
-                    document.body.removeChild(link);
-                    window.URL.revokeObjectURL(objectUrl);
-                }, 100);
-                
-                toast.innerHTML = `<i class="fa-solid fa-check text-green-400 mr-2"></i> Berhasil!`;
-
-            } catch (err) {
-                console.warn("Direct download failed, falling back to new tab:", err);
-                toast.innerHTML = `<i class="fa-solid fa-info-circle text-blue-400 mr-2"></i> Membuka tab baru...`;
-                
-                // Fallback: Jika fetch gagal (karena isu CORS pada blob dsb), buka di tab baru.
-                // Pengguna harus melakukan "Save Image As" atau "Save Video As" manual.
-                window.open(url, '_blank');
-            } finally {
-                // Hapus toast setelah 3 detik
-                setTimeout(() => {
-                    toast.style.opacity = '0';
-                    toast.style.transition = 'opacity 0.5s ease';
-                    setTimeout(() => toast.remove(), 500);
-                }, 3000);
+                // Mute local stream immediately. PTT will unmute it.
+                localStream.getAudioTracks().forEach(track => {
+                    track.enabled = false;
+                });
+                return true;
+            } catch (error) {
+                console.error("Error accessing media devices.", error);
+                updateLCD("NO MIC", "---", "✖");
+                alert("Microphone access is required to use the Walkie Talkie.");
+                return false;
             }
         }
 
-        // Helper Error UI
-        function showError(title, desc) {
-            errorTitle.innerText = title;
-            errorDesc.innerText = desc;
-            errorMessage.classList.remove('hidden');
+        async function createRoom() {
+            if (!auth.currentUser) return;
+            const hasMedia = await openUserMedia();
+            if (!hasMedia) return;
+
+            updateLCD("CREATING", "...", "⧖");
+            isCaller = true;
+
+            // Initialize Peer Connection
+            peerConnection = new RTCPeerConnection(configuration);
+            setupWebRTCListeners();
+            
+            // Add local tracks to peer connection
+            localStream.getTracks().forEach(track => {
+                peerConnection.addTrack(track, localStream);
+            });
+
+            // Firestore references
+            const roomRef = doc(collection(db, 'artifacts', appId, 'public', 'data', 'rooms'));
+            roomId = roomRef.id;
+            
+            // Just take first 5 chars for a simple room code (Walkie talkie style)
+            const shortRoomId = roomId.substring(0, 5).toUpperCase();
+
+            const callerCandidatesCollection = collection(roomRef, 'callerCandidates');
+
+            // Collect ICE candidates and save them to Firestore
+            peerConnection.addEventListener('icecandidate', event => {
+                if (event.candidate) {
+                    addDoc(callerCandidatesCollection, event.candidate.toJSON());
+                }
+            });
+
+            // Create Offer
+            const offer = await peerConnection.createOffer();
+            await peerConnection.setLocalDescription(offer);
+
+            const roomWithOffer = {
+                offer: {
+                    type: offer.type,
+                    sdp: offer.sdp
+                },
+                createdAt: new Date().toISOString() // for cleanup if necessary later
+            };
+            
+            await setDoc(roomRef, roomWithOffer);
+            
+            showCallPanel(shortRoomId);
+            updateLCD("WAITING", shortRoomId, "⧖");
+
+            // Listen for remote answer
+            onSnapshot(roomRef, async snapshot => {
+                const data = snapshot.data();
+                if (!peerConnection.currentRemoteDescription && data && data.answer) {
+                    const rtcSessionDescription = new RTCSessionDescription(data.answer);
+                    await peerConnection.setRemoteDescription(rtcSessionDescription);
+                    updateLCD("CONNECTED", shortRoomId, "✔");
+                }
+            }, (error) => console.error("Room snapshot error:", error));
+
+            // Listen for remote ICE candidates
+            const calleeCandidatesCollection = collection(roomRef, 'calleeCandidates');
+            onSnapshot(calleeCandidatesCollection, snapshot => {
+                snapshot.docChanges().forEach(async change => {
+                    if (change.type === 'added') {
+                        let data = change.doc.data();
+                        await peerConnection.addIceCandidate(new RTCIceCandidate(data));
+                    }
+                });
+            }, (error) => console.error("Callee ICE error:", error));
         }
 
-        function hideError() {
-            errorMessage.classList.add('hidden');
+        async function joinRoom(shortId) {
+            if (!auth.currentUser) return;
+            if (!shortId) return;
+
+            const hasMedia = await openUserMedia();
+            if (!hasMedia) return;
+
+            updateLCD("JOINING", shortId, "⧖");
+            isCaller = false;
+
+            // Search for the room starting with the short ID
+            const roomsCol = collection(db, 'artifacts', appId, 'public', 'data', 'rooms');
+            const roomsSnapshot = await getDocs(roomsCol);
+            
+            let fullRoomId = null;
+            let roomData = null;
+
+            roomsSnapshot.forEach(doc => {
+                if (doc.id.toUpperCase().startsWith(shortId.toUpperCase())) {
+                    fullRoomId = doc.id;
+                    roomData = doc.data();
+                }
+            });
+
+            if (!fullRoomId || !roomData || !roomData.offer) {
+                updateLCD("NOT FOUND", shortId, "✖");
+                setTimeout(() => {
+                    updateLCD("READY", "---", "●");
+                }, 2000);
+                return;
+            }
+
+            roomId = fullRoomId;
+            const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId);
+
+            peerConnection = new RTCPeerConnection(configuration);
+            setupWebRTCListeners();
+
+            // Add local tracks
+            localStream.getTracks().forEach(track => {
+                peerConnection.addTrack(track, localStream);
+            });
+
+            const calleeCandidatesCollection = collection(roomRef, 'calleeCandidates');
+            peerConnection.addEventListener('icecandidate', event => {
+                if (event.candidate) {
+                    addDoc(calleeCandidatesCollection, event.candidate.toJSON());
+                }
+            });
+
+            // Set remote description from offer
+            const offer = roomData.offer;
+            await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+
+            // Create and set answer
+            const answer = await peerConnection.createAnswer();
+            await peerConnection.setLocalDescription(answer);
+
+            const roomWithAnswer = {
+                answer: {
+                    type: answer.type,
+                    sdp: answer.sdp
+                }
+            };
+            await updateDoc(roomRef, roomWithAnswer);
+
+            showCallPanel(shortId);
+            updateLCD("CONNECTED", shortId, "✔");
+
+            // Listen for caller ICE candidates
+            const callerCandidatesCollection = collection(roomRef, 'callerCandidates');
+            onSnapshot(callerCandidatesCollection, snapshot => {
+                snapshot.docChanges().forEach(async change => {
+                    if (change.type === 'added') {
+                        let data = change.doc.data();
+                        await peerConnection.addIceCandidate(new RTCIceCandidate(data));
+                    }
+                });
+            }, (error) => console.error("Caller ICE error:", error));
         }
+
+        function setupWebRTCListeners() {
+            peerConnection.addEventListener('track', event => {
+                // When we receive a remote stream
+                if (!remoteStream) {
+                    remoteStream = new MediaStream();
+                    ui.remoteAudio.srcObject = remoteStream;
+                }
+                remoteStream.addTrack(event.track);
+
+                // Setup listener to show RX indicator when audio is playing
+                // WebRTC audio doesn't have a simple "is talking" event out of the box without Web Audio API,
+                // but we can monitor connection state.
+            });
+
+            peerConnection.addEventListener('connectionstatechange', () => {
+                console.log("Connection state:", peerConnection.connectionState);
+                if (peerConnection.connectionState === 'disconnected' || peerConnection.connectionState === 'failed') {
+                    hangUp();
+                } else if (peerConnection.connectionState === 'connected') {
+                    // Start an audio context analyzer to detect remote audio level for RX indicator
+                    setupAudioLevelMonitor();
+                }
+            });
+        }
+
+        let isTransmitting = false;
+
+        function startPTT(e) {
+            if (e) {
+                e.preventDefault(); // Prevent duplicate touch/mouse events
+                e.stopPropagation();
+            }
+            if (!peerConnection || peerConnection.connectionState !== 'connected' || isTransmitting) return;
+            
+            isTransmitting = true;
+            ui.btnPtt.classList.add('pressed');
+            ui.lcd.classList.add('transmitting');
+            
+            playSfx('tx-start');
+
+            // Unmute mic
+            if (localStream) {
+                localStream.getAudioTracks().forEach(track => {
+                    track.enabled = true;
+                });
+            }
+        }
+
+        function stopPTT(e) {
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            if (!isTransmitting) return;
+
+            isTransmitting = false;
+            ui.btnPtt.classList.remove('pressed');
+            ui.lcd.classList.remove('transmitting');
+
+            // Mute mic
+            if (localStream) {
+                localStream.getAudioTracks().forEach(track => {
+                    track.enabled = false;
+                });
+            }
+            
+            playSfx('tx-end');
+        }
+
+        // PTT Event Listeners (Mouse & Touch)
+        ui.btnPtt.addEventListener('mousedown', startPTT);
+        ui.btnPtt.addEventListener('touchstart', startPTT, {passive: false});
+        
+        window.addEventListener('mouseup', stopPTT);
+        window.addEventListener('touchend', stopPTT);
+        // If mouse leaves button while pressed, we can decide to keep it on or stop. Usually stop.
+        ui.btnPtt.addEventListener('mouseleave', stopPTT);
+        ui.btnPtt.addEventListener('touchcancel', stopPTT);
+
+
+        function setupAudioLevelMonitor() {
+            if (!audioContext || !remoteStream) return;
+            
+            const source = audioContext.createMediaStreamSource(remoteStream);
+            const analyzer = audioContext.createAnalyser();
+            analyzer.fftSize = 256;
+            source.connect(analyzer);
+
+            const bufferLength = analyzer.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+
+            function checkLevel() {
+                if (peerConnection && peerConnection.connectionState === 'connected') {
+                    analyzer.getByteFrequencyData(dataArray);
+                    
+                    let sum = 0;
+                    for (let i = 0; i < bufferLength; i++) {
+                        sum += dataArray[i];
+                    }
+                    const average = sum / bufferLength;
+
+                    // If volume > threshold, show RX
+                    if (average > 5 && !isTransmitting) {
+                        ui.rxIndicator.style.opacity = '1';
+                    } else {
+                        ui.rxIndicator.style.opacity = '0';
+                    }
+                    requestAnimationFrame(checkLevel);
+                } else {
+                    ui.rxIndicator.style.opacity = '0';
+                }
+            }
+            checkLevel();
+        }
+
+
+        function updateLCD(status, roomStr, icon) {
+            ui.lcdStatus.innerText = status;
+            ui.lcdRoomText.innerText = roomStr || "---";
+            ui.statusIcon.innerText = icon || "";
+        }
+
+        function showCallPanel(shortId) {
+            ui.setupPanel.classList.add('hidden');
+            ui.callPanel.classList.remove('hidden');
+            ui.lcdRoomText.innerText = shortId;
+        }
+
+        async function hangUp() {
+            if (peerConnection) {
+                peerConnection.close();
+                peerConnection = null;
+            }
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+                localStream = null;
+            }
+            remoteStream = null;
+            ui.remoteAudio.srcObject = null;
+
+            // Optional: delete room from firestore if caller
+            if (isCaller && roomId && auth.currentUser) {
+                try {
+                   const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId);
+                   await deleteDoc(roomRef);
+                } catch(e) { console.log("Error cleaning up room", e); }
+            }
+
+            roomId = null;
+            isCaller = false;
+            
+            ui.callPanel.classList.add('hidden');
+            ui.setupPanel.classList.remove('hidden');
+            updateLCD("READY", "---", "●");
+            ui.rxIndicator.style.opacity = '0';
+        }
+
+        // Button Listeners
+        ui.btnCreate.addEventListener('click', createRoom);
+        
+        ui.btnJoin.addEventListener('click', () => {
+            const val = ui.joinInput.value.trim();
+            if (val) {
+                joinRoom(val);
+            }
+        });
+
+        ui.btnHangup.addEventListener('click', hangUp);
+
+        ui.btnCopy.addEventListener('click', () => {
+            const shortId = ui.lcdRoomText.innerText;
+            if (shortId && shortId !== '---') {
+                try {
+                    // Fallback for iframe environments
+                    const el = document.createElement('textarea');
+                    el.value = shortId;
+                    document.body.appendChild(el);
+                    el.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(el);
+                    
+                    const originalText = ui.btnCopy.innerText;
+                    ui.btnCopy.innerText = "Copied!";
+                    setTimeout(() => ui.btnCopy.innerText = originalText, 2000);
+                } catch(e) { console.error("Copy failed", e); }
+            }
+        });
+
+        // Initialize Application
+        initApp();
+
     </script>
 </body>
 </html>

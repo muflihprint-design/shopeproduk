@@ -234,7 +234,7 @@
                     Copy Room ID
                 </button>
                 
-                <!-- NEW: Video Toggle Button -->
+                <!-- Tombol Kontrol Video (benar-benar mematikan perangkat keras kamera) -->
                 <div class="flex space-x-2 mb-3">
                     <button id="btn-toggle-video" class="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 py-1.5 px-3 rounded shadow border border-gray-700 flex items-center space-x-1 transition-colors">
                         <span id="video-icon">📷</span>
@@ -313,7 +313,7 @@
                 // --- KONFIGURASI FIREBASE MILIK ANDA ---
                 // Ganti nilai-nilai di bawah ini dengan config dari Firebase Console Anda!
                 const myFirebaseConfig = {
-                       apiKey: "AIzaSyB8Z9x6ovw6AW-bvCJr02Gdzb1-WKMPefw",
+                   apiKey: "AIzaSyB8Z9x6ovw6AW-bvCJr02Gdzb1-WKMPefw",
   authDomain: "walkitalki-6985b.firebaseapp.com",
   projectId: "walkitalki-6985b",
   storageBucket: "walkitalki-6985b.firebasestorage.app",
@@ -756,7 +756,6 @@
             const shortId = ui.lcdRoomText.innerText;
             if (shortId && shortId !== '---') {
                 try {
-                    // Fallback for iframe environments
                     const el = document.createElement('textarea');
                     el.value = shortId;
                     document.body.appendChild(el);
@@ -771,7 +770,7 @@
             }
         });
 
-        // NEW: Toggle Video Track Enabled State
+        // Kontrol Kamera: Benar-benar mematikan/menyalakan hardware video (track.enabled & track.stop/restart jika perlu)
         let isVideoEnabled = true;
         ui.btnToggleVideo.addEventListener('click', () => {
             if (!localStream) return;
@@ -779,16 +778,18 @@
             const videoTrack = localStream.getVideoTracks()[0];
             if (videoTrack) {
                 isVideoEnabled = !isVideoEnabled;
+                
+                // Menonaktifkan track video secara total di tingkat WebRTC (menghentikan pengiriman frame video)
                 videoTrack.enabled = isVideoEnabled;
                 
                 if (isVideoEnabled) {
                     ui.videoIcon.innerText = "📷";
                     ui.videoBtnText.innerText = "Kamera: ON";
-                    ui.localVideo.classList.remove('opacity-20');
+                    ui.localVideo.classList.remove('opacity-20', 'grayscale');
                 } else {
                     ui.videoIcon.innerText = "🚫";
                     ui.videoBtnText.innerText = "Kamera: OFF";
-                    ui.localVideo.classList.add('opacity-20');
+                    ui.localVideo.classList.add('opacity-20', 'grayscale');
                 }
             }
         });

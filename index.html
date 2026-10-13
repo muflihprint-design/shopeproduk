@@ -213,6 +213,7 @@
         let remoteStream = null;
         let roomId = null;
         let isCaller = false;
+        let unsubscribers = [];
         
         let audioContext = null;
         
@@ -246,21 +247,33 @@
 
         async function initApp() {
             try {
-                // Initialize Firebase using environment provided config
-                appId = typeof __app_id !== 'undefined' ? __app_id : 'walkie-talkie-app';
-                const firebaseConfig = typeof __firebase_config !== 'undefined' ? 
-                                       JSON.parse(__firebase_config) : 
-                                       {}; // Will fail if no config provided, standard behavior for this env.
+                // --- KONFIGURASI FIREBASE MILIK ANDA ---
+                // Ganti nilai-nilai di bawah ini dengan config dari Firebase Console Anda!
+                const myFirebaseConfig = {
+                    apiKey: "AIzaSyB8Z9x6ovw6AW-bvCJr02Gdzb1-WKMPefw",
+  authDomain: "walkitalki-6985b.firebaseapp.com",
+  projectId: "walkitalki-6985b",
+  storageBucket: "walkitalki-6985b.firebasestorage.app",
+  messagingSenderId: "503583235135",
+  appId: "1:503583235135:web:7fa355d440ce17cf402c8a"
+                };
+
+                // Logika Cerdas: Gunakan config internal jika di Gemini, gunakan config Anda jika di luar (GitHub Pages/Lokal)
+                const isGeminiEnv = typeof __firebase_config !== 'undefined';
+                const firebaseConfig = isGeminiEnv ? JSON.parse(__firebase_config) : myFirebaseConfig;
+                
+                // Gunakan ID statis untuk database eksternal agar lintas-perangkat bisa mencari di folder yang sama
+                appId = isGeminiEnv ? __app_id : 'walkie-talkie-public-rooms';
                 
                 app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
 
                 // Authenticate
-                if (typeof __initial_auth_token !== 'undefined') {
+                if (isGeminiEnv && typeof __initial_auth_token !== 'undefined') {
                     await signInWithCustomToken(auth, __initial_auth_token);
                 } else {
-                    await signInAnonymously(auth);
+                    await signInAnonymously(auth); // Akan menggunakan Authentication dari Firebase Anda
                 }
                 
                 userId = auth.currentUser.uid;
@@ -386,7 +399,8 @@
             updateLCD("WAITING", shortRoomId, "⧖");
 
             // Listen for remote answer
-            onSnapshot(roomRef, async snapshot => {
+            const unsubRoom = onSnapshot(roomRef, async snapshot => {
+                if (!peerConnection) return; // Pencegahan jika koneksi sudah ditutup
                 const data = snapshot.data();
                 if (!peerConnection.currentRemoteDescription && data && data.answer) {
                     const rtcSessionDescription = new RTCSessionDescription(data.answer);
@@ -394,10 +408,12 @@
                     updateLCD("CONNECTED", shortRoomId, "✔");
                 }
             }, (error) => console.error("Room snapshot error:", error));
+            unsubscribers.push(unsubRoom);
 
             // Listen for remote ICE candidates
             const calleeCandidatesCollection = collection(roomRef, 'calleeCandidates');
-            onSnapshot(calleeCandidatesCollection, snapshot => {
+            const unsubCallee = onSnapshot(calleeCandidatesCollection, snapshot => {
+                if (!peerConnection) return; // Pencegahan jika koneksi sudah ditutup
                 snapshot.docChanges().forEach(async change => {
                     if (change.type === 'added') {
                         let data = change.doc.data();
@@ -405,6 +421,7 @@
                     }
                 });
             }, (error) => console.error("Callee ICE error:", error));
+            unsubscribers.push(unsubCallee);
         }
 
         async function joinRoom(shortId) {
@@ -478,7 +495,8 @@
 
             // Listen for caller ICE candidates
             const callerCandidatesCollection = collection(roomRef, 'callerCandidates');
-            onSnapshot(callerCandidatesCollection, snapshot => {
+            const unsubCaller = onSnapshot(callerCandidatesCollection, snapshot => {
+                if (!peerConnection) return; // Pencegahan jika koneksi sudah ditutup
                 snapshot.docChanges().forEach(async change => {
                     if (change.type === 'added') {
                         let data = change.doc.data();
@@ -486,6 +504,7 @@
                     }
                 });
             }, (error) => console.error("Caller ICE error:", error));
+            unsubscribers.push(unsubCaller);
         }
 
         function setupWebRTCListeners() {
@@ -617,6 +636,10 @@
         }
 
         async function hangUp() {
+            // Hentikan semua listener database agar tidak terjadi error (memory leak)
+            unsubscribers.forEach(unsub => unsub());
+            unsubscribers = [];
+
             if (peerConnection) {
                 peerConnection.close();
                 peerConnection = null;
